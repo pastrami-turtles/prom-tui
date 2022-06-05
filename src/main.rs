@@ -3,10 +3,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{
-    io,
-    time::{Duration, Instant},
-};
+use std::{env, io, time::{Duration, Instant}};
 use tui::{backend::CrosstermBackend, Terminal};
 
 mod model;
@@ -25,19 +22,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_tick = Instant::now();
     let tick_rate = Duration::from_millis(250);
 
-    let mut metric_names: Vec<String> = Vec::new();
-
     let default_endpoint = &"http://localhost:8080".to_string();
     let query = args.get(1).unwrap_or_else(|| default_endpoint);
     let lines: Vec<String> = prom::query(query);
 
-    for line in lines {
-        if line.starts_with("# HELP ") {
+
+    let metric_names: Vec<String> = lines.iter()
+        .filter(|line| line.starts_with("# HELP "))
+        .map(|line| {
             let parts: Vec<&str> = line.split(" ").collect();
-            let name = parts[2];
-            metric_names.push(name.to_string());
-        }
-    }
+            parts[2].to_string()
+        })
+        .fold(Vec::new(), |mut v, x| -> Vec<String> {
+            v.push(x.to_string());
+            v
+        });
 
     let mut events = model::MetricStore::new(metric_names);
 
