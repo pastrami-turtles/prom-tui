@@ -14,6 +14,7 @@ mod prom;
 mod ui;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -26,7 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut metric_names: Vec<String> = Vec::new();
 
-    let lines = prom::query("http://localhost:8080");
+    let default_endpoint = &"http://localhost:8080".to_string();
+    let query = args.get(1).unwrap_or_else(|| default_endpoint);
+    let lines: Vec<String> = prom::query(query);
 
     for line in lines {
         if line.starts_with("# HELP ") {
