@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut metric_names: Vec<String> = Vec::new();
 
-    let lines = prom::query("http://localhost:9644/metrics");
+    let lines = prom::query("http://localhost:8080");
 
     for line in lines {
         if line.starts_with("# HELP ") {
