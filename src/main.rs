@@ -32,13 +32,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let lines = prom::query(endpoint);
 
-    for line in lines {
-        if line.starts_with("# HELP ") {
+
+    let metric_names: Vec<String> = lines.iter()
+        .filter(|line| line.starts_with("# HELP "))
+        .map(|line| {
             let parts: Vec<&str> = line.split(" ").collect();
-            let name = parts[2];
-            metric_names.push(name.to_string());
-        }
-    }
+            parts[2].to_string()
+        })
+        .fold(Vec::new(), |mut v, x| -> Vec<String> {
+            v.push(x.to_string());
+            v
+        });
 
     let mut events = model::MetricStore::new(metric_names);
 
