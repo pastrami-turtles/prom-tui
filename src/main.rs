@@ -39,11 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let parts: Vec<&str> = line.split(" ").collect();
             parts[2].to_string()
         })
-        .fold(Vec::new(), |mut v, x| -> Vec<String> {
-            v.push(x.to_string());
-            v
-        });
-
+        .collect();
     let mut events = model::MetricStore::new(metric_names);
 
     // select first element at start
