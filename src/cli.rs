@@ -30,7 +30,6 @@ pub fn build() -> Command<'static> {
                 .use_value_delimiter(false)
                 .help("Prometheus endpoint's port number")
                 .long_help("The port number used in the default prometheus endpoint. Example: http://localhost:<PORT>/metrics")
-                .default_value("8080")
                 .validator(|v| v.to_string().parse::<u16>())
         )
 }
