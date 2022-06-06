@@ -7,7 +7,9 @@ use std::{
     io,
     time::{Duration, Instant},
 };
+use std::borrow::Borrow;
 use tui::{backend::CrosstermBackend, Terminal};
+use regex::Regex;
 
 mod model;
 mod prom;
@@ -17,8 +19,9 @@ mod cli;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // setup terminal
     let matches = cli::build().get_matches();
-
-    let endpoint = matches.value_of("Endpoint").unwrap();
+    let regex = Regex::new(":(\\d{2,5})/").unwrap();
+    let port = matches.value_of("Port").unwrap();
+    let endpoint = matches.value_of("Endpoint").map(|e| regex.replace(e, format!(":{port}/", port = port))).unwrap();
     let mut stdout = io::stdout();
     enable_raw_mode()?;
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -28,18 +31,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_tick = Instant::now();
     let tick_rate = Duration::from_millis(250);
 
-    let mut metric_names: Vec<String> = Vec::new();
+    let lines = prom::query(endpoint.borrow());
 
-    let lines = prom::query(endpoint);
-
-    for line in lines {
-        if line.starts_with("# HELP ") {
+    let metric_names: Vec<String> = lines.iter()
+        .filter(|line| line.starts_with("# HELP "))
+        .map(|line| {
             let parts: Vec<&str> = line.split(" ").collect();
-            let name = parts[2];
-            metric_names.push(name.to_string());
-        }
-    }
-
+            parts[2].to_string()
+        })
+        .collect();
     let mut events = model::MetricStore::new(metric_names);
 
     // select first element at start
