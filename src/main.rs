@@ -15,10 +15,16 @@ mod ui;
 mod cli;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // initialize the logger
+    //TODO in the future, this should be not provided by the user but embedded in the binary
+    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+    log::info!("Starting the application!");
     // setup terminal
     let matches = cli::build().get_matches();
 
     let endpoint = matches.value_of("Endpoint").unwrap();
+    log::info!("Reading metrics from endpoint: {}", endpoint);
+
     let mut stdout = io::stdout();
     enable_raw_mode()?;
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
