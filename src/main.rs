@@ -12,11 +12,15 @@ use tui::{backend::CrosstermBackend, Terminal};
 mod model;
 mod prom;
 mod ui;
+mod cli;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // setup terminal
-    enable_raw_mode()?;
+    let matches = cli::build().get_matches();
+
+    let endpoint = matches.value_of("Endpoint").unwrap();
     let mut stdout = io::stdout();
+    enable_raw_mode()?;
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -26,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut metric_names: Vec<String> = Vec::new();
 
-    let lines = prom::query("http://localhost:8080");
+    let lines = prom::query(endpoint);
 
     for line in lines {
         if line.starts_with("# HELP ") {
