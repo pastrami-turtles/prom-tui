@@ -1,12 +1,13 @@
+use crate::prom::Metric;
 use tui::widgets::ListState;
 
 pub struct MetricStore {
-    pub items: Vec<String>,
+    pub items: Vec<Metric>,
     pub state: ListState,
 }
 
 impl MetricStore {
-    pub fn new(items: Vec<String>) -> MetricStore {
+    pub fn new(items: Vec<Metric>) -> MetricStore {
         MetricStore {
             items,
             state: ListState::default(),

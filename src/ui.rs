@@ -1,3 +1,4 @@
+use crate::prom::Metric;
 use tui::{
     backend::Backend,
     style::{Color, Modifier, Style},
@@ -5,13 +6,17 @@ use tui::{
     Frame,
 };
 
-pub fn render<B: Backend>(f: &mut Frame<B>, metrics: &mut crate::model::MetricStore) {
+pub fn render<B: Backend>(f: &mut Frame<B>, store: &mut crate::model::MetricStore) {
     let size = f.size();
 
-    let items: Vec<ListItem> = metrics
+    let items: Vec<ListItem> = store
         .items
         .iter()
-        .map(|i| ListItem::new(i.as_ref()))
+        .map(|metric| match metric {
+            Metric::CounterMetric(metric) => ListItem::new(metric.name.as_ref()),
+            Metric::GaugeMetric(metric) => ListItem::new(metric.name.as_ref()),
+            Metric::HistogramMetric(metric) => ListItem::new(metric.name.as_ref()),
+        })
         .collect();
 
     let list = List::new(items)
@@ -24,5 +29,5 @@ pub fn render<B: Backend>(f: &mut Frame<B>, metrics: &mut crate::model::MetricSt
                 .add_modifier(Modifier::ITALIC),
         );
 
-    f.render_stateful_widget(list, size, &mut metrics.state);
+    f.render_stateful_widget(list, size, &mut store.state);
 }
