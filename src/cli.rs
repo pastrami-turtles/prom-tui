@@ -9,16 +9,28 @@ pub fn build() -> Command<'static> {
             Arg::new("Endpoint")
                 .short('e')
                 .long("endpoint")
-                .env("PROMTUI_ENDPOINT")
+                .env("PROM_ENDPOINT")
                 .value_hint(ValueHint::Url)
                 .value_name("ENDPOINT")
                 .global(true)
                 .takes_value(true)
-                .help("Endpoint to scrape")
-                .long_help(
-                    "Endpoint to scrape with the prom tui cli.",
-                )
-                .default_value("http://localhost:8080"),
+                .help("Prometheus endpoint to scrape")
+                .long_help("The Prometheus endpoint used to scrape metrics from.")
+                .default_value("http://localhost:8080/metrics")
+        )
+        .arg(
+            Arg::new("Port")
+                .short('p')
+                .long("port")
+                .env("PROM_PORT")
+                .value_hint(ValueHint::Other)
+                .value_name("PORT")
+                .global(false)
+                .takes_value(true)
+                .use_value_delimiter(false)
+                .help("Prometheus endpoint's port number")
+                .long_help("The port number used in the default prometheus endpoint. Example: http://localhost:<PORT>/metrics")
+                .validator(|v| v.to_string().parse::<u16>())
         )
 }
 
