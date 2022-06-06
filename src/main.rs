@@ -27,9 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let regex = Regex::new(":(\\d{2,5})/").unwrap();
     let port_option = matches.value_of("Port");
     let endpoint_option = matches.value_of("Endpoint");
-    let mut endpoint = endpoint_option.unwrap().to_string();
-    if let Some(port) = port_option {
-        endpoint = endpoint_option.map(|e| regex.replace(e, format!(":{port}/", port = port))).unwrap().to_string();
+    let endpoint = match port_option {
+        Some(port) => endpoint_option.map(|e| regex.replace(e, format!(":{port}/", port = port))).unwrap().to_string(),
+        None => endpoint_option.unwrap().to_string(),
     };
     log::info!("Reading metrics from endpoint: {}", endpoint);
 
