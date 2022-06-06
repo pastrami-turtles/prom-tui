@@ -21,7 +21,7 @@ with the env variable
 PROMTUI_ENDPOINT=http://localhost:8081/metrics cargo run
 ```
 
-If no endpoint is provided the default value is http://localhost:8080
+If no endpoint is provided the default value is http://localhost:8080/metrics
 
 ## Local development
 
