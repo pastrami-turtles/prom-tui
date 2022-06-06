@@ -3,18 +3,19 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use prom::Metric;
+use regex::Regex;
+use std::borrow::Borrow;
 use std::{
     io,
     time::{Duration, Instant},
 };
-use std::borrow::Borrow;
 use tui::{backend::CrosstermBackend, Terminal};
-use regex::Regex;
 
+mod cli;
 mod model;
 mod prom;
 mod ui;
-mod cli;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // initialize the logger
@@ -28,7 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port_option = matches.value_of("Port");
     let endpoint_option = matches.value_of("Endpoint");
     let endpoint = match port_option {
-        Some(port) => endpoint_option.map(|e| regex.replace(e, format!(":{port}/", port = port))).unwrap().to_string(),
+        Some(port) => endpoint_option
+            .map(|e| regex.replace(e, format!(":{port}/", port = port)))
+            .unwrap()
+            .to_string(),
         None => endpoint_option.unwrap().to_string(),
     };
     log::info!("Reading metrics from endpoint: {}", endpoint);
@@ -43,16 +47,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_tick = Instant::now();
     let tick_rate = Duration::from_millis(250);
 
-    let lines = prom::query(endpoint.borrow());
+    let metrics: Vec<Metric> = prom::query(endpoint.borrow());
 
-    let metric_names: Vec<String> = lines.iter()
-        .filter(|line| line.starts_with("# HELP "))
-        .map(|line| {
-            let parts: Vec<&str> = line.split(" ").collect();
-            parts[2].to_string()
-        })
-        .collect();
-    let mut events = model::MetricStore::new(metric_names);
+    let mut events = model::MetricStore::new(metrics);
 
     // select first element at start
     events.next();

@@ -11,7 +11,8 @@ apt-get install -y \
   build-essential \
   openssl \
   libssl-dev \
-  netcat
+  netcat \
+  pkg-config
 
 ## Install rustup and common components
 curl https://sh.rustup.rs -sSf | sh -s -- -y 
