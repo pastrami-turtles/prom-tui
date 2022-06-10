@@ -1,6 +1,7 @@
 use super::parse;
 use super::Metric;
 use reqwest;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn query(url: &str) -> Vec<Metric> {
     let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
@@ -8,5 +9,9 @@ pub fn query(url: &str) -> Vec<Metric> {
         .split("\n")
         .map(|s| String::from(s))
         .collect::<Vec<String>>();
-    return parse(lines);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    return parse(lines, now);
 }

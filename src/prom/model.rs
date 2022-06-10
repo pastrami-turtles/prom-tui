@@ -1,22 +1,32 @@
-pub enum Metric {
-    GaugeMetric(GaugeMetric),
-    CounterMetric(CounterMetric),
-    HistogramMetric(HistogramMetric),
+use std::collections::HashMap;
+
+pub struct Metric {
+    pub details: MetricDetails,
+    pub time_series: HashMap<String, TimeSeries>,
 }
 
-pub struct GaugeMetric {
+pub struct MetricDetails {
     pub name: String,
-    pub description: String,
+    pub docstring: String,
+}
+
+pub struct TimeSeries {
+    pub labels: HashMap<String, String>,
+    pub samples: Vec<Sample>,
+}
+
+pub enum Sample {
+    GaugeSample(SingleValueSample),
+    CounterSample(SingleValueSample),
+    HistogramSample(HistogramSample),
+}
+
+pub struct SingleValueSample {
+    pub timestamp: u64,
     pub value: f64,
 }
 
-pub struct CounterMetric {
-    pub name: String,
-    pub description: String,
-    pub value: f64,
-}
-
-pub struct HistogramMetric {
-    pub name: String,
-    pub description: String,
+pub struct HistogramSample {
+    pub timestamp: u32,
+    pub values: Vec<f64>,
 }

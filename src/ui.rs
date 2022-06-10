@@ -1,4 +1,3 @@
-use crate::prom::Metric;
 use tui::{
     backend::Backend,
     style::{Color, Modifier, Style},
@@ -12,11 +11,7 @@ pub fn render<B: Backend>(f: &mut Frame<B>, store: &mut crate::model::MetricStor
     let items: Vec<ListItem> = store
         .items
         .iter()
-        .map(|metric| match metric {
-            Metric::CounterMetric(metric) => ListItem::new(metric.name.as_ref()),
-            Metric::GaugeMetric(metric) => ListItem::new(metric.name.as_ref()),
-            Metric::HistogramMetric(metric) => ListItem::new(metric.name.as_ref()),
-        })
+        .map(|metric| ListItem::new(metric.details.name.as_ref()))
         .collect();
 
     let list = List::new(items)
