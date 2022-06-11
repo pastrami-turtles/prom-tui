@@ -1,3 +1,5 @@
+use regex::Regex;
+
 use super::Metric;
 use super::MetricDetails;
 use super::Sample;
@@ -19,8 +21,8 @@ pub fn parse(lines: Vec<String>, timestamp: u64) -> Vec<Metric> {
 }
 
 fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
-    let (name, docstring) = extract_name_docstring(lines[0].clone()).unwrap();
-    let metric_type = extract_type(lines[1].clone()).unwrap();
+    let (name, docstring) = extract_name_docstring(&lines[0]).unwrap();
+    let metric_type = extract_type(&lines[1]).unwrap();
 
     let mut metric = Metric {
         details: MetricDetails {
@@ -34,11 +36,12 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
         "gauge" => {
             for line in lines.iter().skip(2) {
                 let labels = extract_labels(&line);
+                let (key, labels_map) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
                 metric.time_series.insert(
-                    labels.clone(),
+                    key,
                     TimeSeries {
-                        labels: decode_labels(labels.clone()),
+                        labels: labels_map,
                         samples: vec![Sample::GaugeSample(SingleValueSample {
                             timestamp: timestamp,
                             value: value,
@@ -50,11 +53,12 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
         "counter" => {
             for line in lines.iter().skip(2) {
                 let labels = extract_labels(&line);
+                let (key, labels_map) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
                 metric.time_series.insert(
-                    labels.clone(),
+                    key,
                     TimeSeries {
-                        labels: decode_labels(labels.clone()),
+                        labels: labels_map,
                         samples: vec![Sample::CounterSample(SingleValueSample {
                             timestamp: timestamp,
                             value: value,
@@ -70,6 +74,18 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
     }
 
     return metric;
+}
+
+fn extract_labels_key_and_map(labels: Option<String>) -> (String, HashMap<String, String>) {
+    let key = match labels.clone() {
+        Some(labels) => labels,
+        None => String::from("value"),
+     };
+    let labels_map =  match labels {
+        Some(labels) => decode_labels(&labels),
+        None => HashMap::from([("key".to_string(), "value".to_string())]),
+    };
+    (key, labels_map)
 }
 
 fn split_metric_lines(lines: Vec<String>) -> Vec<Vec<String>> {
@@ -91,7 +107,7 @@ fn split_metric_lines(lines: Vec<String>) -> Vec<Vec<String>> {
     return metrics;
 }
 
-fn extract_name_docstring(line: String) -> Option<(String, String)> {
+fn extract_name_docstring(line: &str) -> Option<(String, String)> {
     let name_desc: String = line.chars().skip(7).take(line.len() - 6).collect();
     let name_desc = name_desc
         .match_indices(" ")
@@ -101,7 +117,7 @@ fn extract_name_docstring(line: String) -> Option<(String, String)> {
     return name_desc;
 }
 
-fn extract_type(line: String) -> Option<String> {
+fn extract_type(line: &str) -> Option<String> {
     let metric_type = line
         .match_indices(" ")
         .nth(2)
@@ -110,23 +126,16 @@ fn extract_type(line: String) -> Option<String> {
     return metric_type;
 }
 
-fn extract_labels(line: &String) -> String {
-    let mut labels = line
-        .match_indices("{")
-        .nth(0)
-        .map(|(index, _)| line.split_at(index + 1))
-        .map(|(_, right)| String::from(right))
-        .unwrap();
-    labels = labels
-        .match_indices("}")
-        .nth(0)
-        .map(|(index, _)| labels.split_at(index))
-        .map(|(left, _)| String::from(left))
-        .unwrap();
-    return labels;
+fn extract_labels(line: &str) -> Option<String> {
+    log::debug!("extract_labels2: {}", line);
+    let regex = Regex::new(r"\{(.*?)\}").unwrap();
+    if let Some(caps) = regex.captures_iter(line).next() {
+        return Some(caps[1].to_string())
+    }
+    None
 }
 
-fn decode_labels(labels: String) -> HashMap<String, String> {
+fn decode_labels(labels: &str) -> HashMap<String, String> {
     let parts: Vec<String> = labels.split(",").map(|s| s.to_string()).collect();
     let mut labels = HashMap::new();
     for label in parts {
@@ -151,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_decode_labels() {
-        let labels = decode_labels(String::from("key1=\"value1\",key2=\"0\""));
+        let labels = decode_labels(&String::from("key1=\"value1\",key2=\"0\""));
         assert_eq!(labels.keys().count(), 2);
         assert_eq!(labels.get("key1").unwrap(), "value1");
         assert_eq!(labels.get("key2").unwrap(), "0");
@@ -160,7 +169,7 @@ mod tests {
     #[test]
     fn test_extract_name_docstring() {
         let line = String::from("# HELP metric_1 Description of the metric");
-        let name_desc = extract_name_docstring(line);
+        let name_desc = extract_name_docstring(&line);
         match name_desc {
             Some((name, description)) => {
                 assert_eq!(name, "metric_1");
@@ -173,7 +182,7 @@ mod tests {
     #[test]
     fn test_extract_type() {
         let line = String::from("# TYPE vectorized_pandaproxy_request_latency histogram");
-        let metric_type = extract_type(line);
+        let metric_type = extract_type(&line);
         match metric_type {
             Some(metric_type) => {
                 assert_eq!(metric_type, "histogram");
@@ -186,7 +195,7 @@ mod tests {
     fn test_split_metric_lines() {
         let lines = generate_metric_lines();
         let splitted_lines = split_metric_lines(lines);
-        assert_eq!(splitted_lines.len(), 2);
+        assert_eq!(splitted_lines.len(), 4);
         assert_eq!(splitted_lines[0].len(), 3);
         assert_eq!(splitted_lines[1].len(), 3);
     }
@@ -195,7 +204,7 @@ mod tests {
     fn test_parse() {
         let lines = generate_metric_lines();
         let result = self::parse(lines, 1654892036);
-        assert_eq!(result.len(), 2);
+        assert_eq!(result.len(), 4);
         assert_eq!(result[0].details.name, String::from("metric_1"));
         assert_eq!(
             result[0].details.docstring,
@@ -217,6 +226,40 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_extract_labels() {
+        let mut lines = Vec::new();
+        lines.push(String::from("metric_1{shard=\"0\"} 10.000007"));
+        lines.push(String::from("metric_2{shard=\"0\",label1=\"test1\"} 5"));
+        lines.push(String::from("incoming_requests 10"));
+        let line = &lines[0];
+        let labels = extract_labels(&line);
+        match labels {
+            Some(labels) => {
+                assert_eq!(labels, "shard=\"0\"");
+            },
+            None => panic!("Failed to extract labels"),
+        }
+        let line = &lines[1];
+        let labels = extract_labels(&line);
+        match labels {
+            Some(labels) => {
+                assert_eq!(labels, "shard=\"0\",label1=\"test1\"");
+            },
+            None => panic!("Failed to extract labels"),
+        }
+        let line = &lines[2];
+        let labels = extract_labels(&line);
+        match labels {
+            Some(_) => {
+                panic!("Should have not extracted any label");
+            },
+            None => (),
+        }
+    }
+
+
+
     fn generate_metric_lines() -> Vec<String> {
         let mut lines = Vec::new();
         lines.push(String::from("# HELP metric_1 Description of the metric"));
@@ -225,6 +268,12 @@ mod tests {
         lines.push(String::from("# HELP metric_2 Description"));
         lines.push(String::from("# TYPE metric_2 counter"));
         lines.push(String::from("metric_2{shard=\"0\",label1=\"test1\"} 5"));
+        lines.push(String::from("# HELP incoming_requests Incoming Requests"));
+        lines.push(String::from("# TYPE incoming_requests counter"));
+        lines.push(String::from("incoming_requests 10"));
+        lines.push(String::from("# HELP connected_clients Connected Clients"));
+        lines.push(String::from("# TYPE connected_clients gauge"));
+        lines.push(String::from("connected_clients 3"));
         return lines;
     }
 }
