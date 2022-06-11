@@ -712,6 +712,7 @@ dependencies = [
  "regex",
  "reqwest",
  "tui",
+ "tui-tree-widget",
 ]
 
 [[package]]
@@ -1173,6 +1174,16 @@ dependencies = [
  "cassowary",
  "crossterm",
  "unicode-segmentation",
+ "unicode-width",
+]
+
+[[package]]
+name = "tui-tree-widget"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0390703e72885fd3b55ab9f767c753f50793e54b88182c1bcb658e6f85b9b0eb"
+dependencies = [
+ "tui",
  "unicode-width",
 ]
 

@@ -11,6 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tui::{backend::CrosstermBackend, Terminal};
+use tui_tree_widget::{TreeItem};
 
 mod cli;
 mod model;
@@ -49,7 +50,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let metrics: Vec<Metric> = prom::query(endpoint.borrow());
 
-    let mut events = model::MetricStore::new(metrics);
+    let mut tree_items = vec![];
+    for metric in metrics {
+        let mut metric_leaf = TreeItem::new_leaf(metric.details.name);
+        for time_series in metric.time_series.keys() {
+            metric_leaf.add_child(TreeItem::new_leaf(time_series.clone()));
+        }
+        tree_items.push(metric_leaf);
+    }
+
+    let mut events = model::StatefulTree::with_items(tree_items);
 
     // select first element at start
     events.next();
@@ -67,6 +77,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     KeyCode::Char('q') => break,
                     KeyCode::Down => events.next(),
                     KeyCode::Up => events.previous(),
+                    KeyCode::Left => events.close(),
+                    KeyCode::Right => events.open(),
                     _ => {}
                 }
             }
