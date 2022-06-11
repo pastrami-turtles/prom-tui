@@ -36,7 +36,7 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
         "gauge" => {
             for line in lines.iter().skip(2) {
                 let labels = extract_labels(&line);
-                let (key, labels_map) = extract_labels_key_and_map(labels);
+                let(labels_map, key) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
                 metric.time_series.insert(
                     key,
@@ -53,7 +53,7 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
         "counter" => {
             for line in lines.iter().skip(2) {
                 let labels = extract_labels(&line);
-                let (key, labels_map) = extract_labels_key_and_map(labels);
+                let(labels_map, key) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
                 metric.time_series.insert(
                     key,
@@ -76,16 +76,11 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
     return metric;
 }
 
-fn extract_labels_key_and_map(labels: Option<String>) -> (String, HashMap<String, String>) {
-    let key = match labels.clone() {
-        Some(labels) => labels,
-        None => String::from("value"),
-     };
-    let labels_map =  match labels {
-        Some(labels) => decode_labels(&labels),
-        None => HashMap::from([("key".to_string(), "value".to_string())]),
-    };
-    (key, labels_map)
+fn extract_labels_key_and_map(labels: Option<String>) -> (HashMap<String, String>, String) {
+     match labels {
+        Some(labels) => (decode_labels(&labels),labels),
+        None => (HashMap::from([("key".to_string(), "value".to_string())]), String::from("value")),
+     }
 }
 
 fn split_metric_lines(lines: Vec<String>) -> Vec<Vec<String>> {
