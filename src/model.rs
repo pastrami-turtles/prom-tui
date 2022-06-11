@@ -1,48 +1,65 @@
-use crate::prom::Metric;
-use tui::widgets::ListState;
+use tui_tree_widget::{flatten, get_identifier_without_leaf, TreeItem, TreeState};
 
-pub struct MetricStore {
-    pub items: Vec<Metric>,
-    pub state: ListState,
+pub struct StatefulTree<'a> {
+    pub state: TreeState,
+    pub items: Vec<TreeItem<'a>>,
 }
 
-impl MetricStore {
-    pub fn new(items: Vec<Metric>) -> MetricStore {
-        MetricStore {
-            items,
-            state: ListState::default(),
+impl<'a> StatefulTree<'a> {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self {
+            state: TreeState::default(),
+            items: Vec::new(),
         }
     }
 
-    // Select the next item. This will not be reflected until the widget is drawn in the
-    // `Terminal::draw` callback using `Frame::render_stateful_widget`.
-    pub fn next(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i >= self.items.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
+    pub fn with_items(items: Vec<TreeItem<'a>>) -> Self {
+        Self {
+            state: TreeState::default(),
+            items,
+        }
     }
 
-    // Select the previous item. This will not be reflected until the widget is drawn in the
-    // `Terminal::draw` callback using `Frame::render_stateful_widget`.
-    pub fn previous(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.items.len() - 1
-                } else {
-                    i - 1
-                }
+    fn move_up_down(&mut self, down: bool) {
+        let visible = flatten(&self.state.get_all_opened(), &self.items);
+        let current_identifier = self.state.selected();
+        let current_index = visible
+            .iter()
+            .position(|o| o.identifier == current_identifier);
+        let new_index = current_index.map_or(0, |current_index| {
+            if down {
+                current_index.saturating_add(1)
+            } else {
+                current_index.saturating_sub(1)
             }
-            None => 0,
-        };
-        self.state.select(Some(i));
+            .min(visible.len() - 1)
+        });
+        let new_identifier = visible.get(new_index).unwrap().identifier.clone();
+        self.state.select(new_identifier);
+    }
+
+    pub fn next(&mut self) {
+        self.move_up_down(true);
+    }
+
+    pub fn previous(&mut self) {
+        self.move_up_down(false);
+    }
+
+    pub fn close(&mut self) {
+        let selected = self.state.selected();
+        if !self.state.close(&selected) {
+            let (head, _) = get_identifier_without_leaf(&selected);
+            self.state.select(head);
+        }
+    }
+
+    pub fn open(&mut self) {
+        self.state.open(self.state.selected());
+    }
+
+    pub fn toggle(&mut self) {
+        self.state.toggle();
     }
 }
