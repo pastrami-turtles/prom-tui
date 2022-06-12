@@ -1,11 +1,11 @@
 use tui_tree_widget::{flatten, get_identifier_without_leaf, TreeItem, TreeState};
 
-pub struct StatefulTree<'a> {
+pub struct StatefulTree {
     pub state: TreeState,
-    pub items: Vec<TreeItem<'a>>,
+    pub items: Vec<TreeItem<'static>>,
 }
 
-impl<'a> StatefulTree<'a> {
+impl StatefulTree {
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
@@ -14,7 +14,7 @@ impl<'a> StatefulTree<'a> {
         }
     }
 
-    pub fn with_items(items: Vec<TreeItem<'a>>) -> Self {
+    pub fn with_items(items: Vec<TreeItem<'static>>) -> Self {
         Self {
             state: TreeState::default(),
             items,
