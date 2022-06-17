@@ -121,7 +121,20 @@ fn extract_type(line: &str) -> Option<String> {
     return metric_type;
 }
 
-fn extract_labels(line: &str) -> Option<String> {
+pub fn extract_labels(line: &String) -> Option<String> {
+    match  line.find("{") {
+        Some(firs_index) => match line.find("}") {
+            Some(second_index) => {
+                let labels = line.split_at(firs_index+1).1.split_at(second_index-firs_index-1).0;
+                return Some(String::from(labels));
+            }
+            None => None
+        }
+        None => None,
+    }
+}
+
+pub fn extract_labels_with_rgx(line: &str) -> Option<String> {
     log::debug!("extract_labels2: {}", line);
     let regex = Regex::new(r"\{(.*?)\}").unwrap();
     if let Some(caps) = regex.captures_iter(line).next() {
@@ -130,7 +143,7 @@ fn extract_labels(line: &str) -> Option<String> {
     None
 }
 
-fn decode_labels(labels: &str) -> HashMap<String, String> {
+pub fn decode_labels(labels: &str) -> HashMap<String, String> {
     let parts: Vec<String> = labels.split(",").map(|s| s.to_string()).collect();
     let mut labels = HashMap::new();
     for label in parts {
@@ -139,6 +152,17 @@ fn decode_labels(labels: &str) -> HashMap<String, String> {
         labels.insert(key_value[0].clone(), value);
     }
     return labels;
+}
+
+pub fn decode_labels_with_rgx(labels_to_split: &str) -> HashMap<String, String>   {
+   log::debug!("decode_labels: {}", labels_to_split);
+    let regex = Regex::new(r#"(\w+)="(\w+)""#).unwrap(); // using the global "/g" mode to capture all the occurrences without stopping at the first match
+    let mut labels = HashMap::new();
+    for cap in regex.captures_iter(labels_to_split) {
+       labels.insert(cap[1].to_string(), cap[2].to_string());
+     }
+    return labels;
+    labels
 }
 
 fn extract_value(line: &String) -> f64 {

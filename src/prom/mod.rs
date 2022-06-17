@@ -9,5 +9,5 @@ pub use self::model::TimeSeries;
 mod request;
 pub use self::request::query;
 
-mod parser;
+pub(crate) mod parser;
 pub use self::parser::parse;
