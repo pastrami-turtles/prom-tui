@@ -21,12 +21,13 @@ mod prom;
 mod ui;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // initialize the logger
-    log4rs::init_config(app_config("log.out")).unwrap();
-    log::info!("Starting the application!");
-
     // read cli arguments
     let matches = cli::build().get_matches();
+
+    // initialize the logger
+    log4rs::init_config(app_config("log.out", matches.value_of("Logging"))).unwrap();
+    log::info!("Starting the application!");
+
     let regex = Regex::new(":(\\d{2,5})/").unwrap();
     let port_option = matches.value_of("Port");
     let endpoint_option = matches.value_of("Endpoint");
