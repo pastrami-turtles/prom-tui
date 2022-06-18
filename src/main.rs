@@ -1,3 +1,4 @@
+use crate::logging::app_config;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -11,17 +12,17 @@ use std::{
     time::{Duration, Instant},
 };
 use tui::{backend::CrosstermBackend, Terminal};
-use tui_tree_widget::{TreeItem};
+use tui_tree_widget::TreeItem;
 
 mod cli;
+mod logging;
 mod model;
 mod prom;
 mod ui;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // initialize the logger
-    //TODO in the future, this should be not provided by the user but embedded in the binary
-    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+    log4rs::init_config(app_config("log.out")).unwrap();
     log::info!("Starting the application!");
 
     // read cli arguments
