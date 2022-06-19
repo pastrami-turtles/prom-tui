@@ -19,6 +19,7 @@ mod logging;
 mod model;
 mod prom;
 mod ui;
+mod app;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // read cli arguments
@@ -62,12 +63,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut events = model::StatefulTree::with_items(tree_items);
-
+    
     // select first element at start
     events.next();
 
+    //let mut search_input: Vec<char> = vec![];
+
+    let mut app = app::App {
+        search_widget: ui::SearchWidget::new(false, vec![]),
+        metrics_widget: ui::MetricsWidget::new(true, &mut events),
+        graph_widget: ui::GraphWidget::new(false),
+        active_widget: ui::ActiveWidget::Metrics,
+    };
+
     loop {
-        terminal.draw(|f| ui::render(f, &mut events))?;
+        terminal.draw(|f| ui::render(f, &mut app))?;
 
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
@@ -77,11 +87,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') => break,
-                    KeyCode::Down => events.next(),
-                    KeyCode::Up => events.previous(),
-                    KeyCode::Left => events.close(),
-                    KeyCode::Right => events.open(),
-                    _ => {}
+                    _ => {
+                        app.dispatch_input(key.code);
+                    },
                 }
             }
         }
