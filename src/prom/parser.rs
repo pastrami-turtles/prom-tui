@@ -36,7 +36,7 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
         "gauge" => {
             for line in lines.iter().skip(2) {
                 let labels = extract_labels(&line);
-                let(labels_map, key) = extract_labels_key_and_map(labels);
+                let (labels_map, key) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
                 metric.time_series.insert(
                     key,
@@ -53,7 +53,7 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
         "counter" => {
             for line in lines.iter().skip(2) {
                 let labels = extract_labels(&line);
-                let(labels_map, key) = extract_labels_key_and_map(labels);
+                let (labels_map, key) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
                 metric.time_series.insert(
                     key,
@@ -77,10 +77,13 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
 }
 
 fn extract_labels_key_and_map(labels: Option<String>) -> (HashMap<String, String>, String) {
-     match labels {
-        Some(labels) => (decode_labels(&labels),labels),
-        None => (HashMap::from([("key".to_string(), "value".to_string())]), String::from("value")),
-     }
+    match labels {
+        Some(labels) => (decode_labels(&labels), labels),
+        None => (
+            HashMap::from([("key".to_string(), "value".to_string())]),
+            String::from("value"),
+        ),
+    }
 }
 
 fn split_metric_lines(lines: Vec<String>) -> Vec<Vec<String>> {
@@ -121,16 +124,34 @@ fn extract_type(line: &str) -> Option<String> {
     return metric_type;
 }
 
-fn extract_labels(line: &str) -> Option<String> {
+pub fn extract_labels(line: &String) -> Option<String> {
+    match line.find("{") {
+        Some(firs_index) => match line.find("}") {
+            Some(second_index) => {
+                let labels = line
+                    .split_at(firs_index + 1)
+                    .1
+                    .split_at(second_index - firs_index - 1)
+                    .0;
+                return Some(String::from(labels));
+            }
+            None => None,
+        },
+        None => None,
+    }
+}
+
+#[allow(dead_code)]
+pub fn extract_labels_with_rgx(line: &str) -> Option<String> {
     log::debug!("extract_labels2: {}", line);
     let regex = Regex::new(r"\{(.*?)\}").unwrap();
     if let Some(caps) = regex.captures_iter(line).next() {
-        return Some(caps[1].to_string())
+        return Some(caps[1].to_string());
     }
     None
 }
 
-fn decode_labels(labels: &str) -> HashMap<String, String> {
+pub fn decode_labels(labels: &str) -> HashMap<String, String> {
     let parts: Vec<String> = labels.split(",").map(|s| s.to_string()).collect();
     let mut labels = HashMap::new();
     for label in parts {
@@ -138,7 +159,18 @@ fn decode_labels(labels: &str) -> HashMap<String, String> {
         let value = key_value[1].clone().replace("\"", "");
         labels.insert(key_value[0].clone(), value);
     }
-    return labels;
+    labels
+}
+
+#[allow(dead_code)]
+pub fn decode_labels_with_rgx(labels_to_split: &str) -> HashMap<String, String> {
+    log::debug!("decode_labels: {}", labels_to_split);
+    let regex = Regex::new(r#"(\w+)="(\w+)""#).unwrap(); // using the global "/g" mode to capture all the occurrences without stopping at the first match
+    let mut labels = HashMap::new();
+    for cap in regex.captures_iter(labels_to_split) {
+        labels.insert(cap[1].to_string(), cap[2].to_string());
+    }
+    labels
 }
 
 fn extract_value(line: &String) -> f64 {
@@ -232,7 +264,7 @@ mod tests {
         match labels {
             Some(labels) => {
                 assert_eq!(labels, "shard=\"0\"");
-            },
+            }
             None => panic!("Failed to extract labels"),
         }
         let line = &lines[1];
@@ -240,7 +272,7 @@ mod tests {
         match labels {
             Some(labels) => {
                 assert_eq!(labels, "shard=\"0\",label1=\"test1\"");
-            },
+            }
             None => panic!("Failed to extract labels"),
         }
         let line = &lines[2];
@@ -248,12 +280,10 @@ mod tests {
         match labels {
             Some(_) => {
                 panic!("Should have not extracted any label");
-            },
+            }
             None => (),
         }
     }
-
-
 
     fn generate_metric_lines() -> Vec<String> {
         let mut lines = Vec::new();
