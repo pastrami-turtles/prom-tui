@@ -10,16 +10,16 @@ use std::{
     io,
     time::{Duration, Instant},
 };
-use tokio::sync::{mpsc, broadcast};
+use tokio::sync::{broadcast, mpsc};
 use tokio::task;
 use tui::{backend::CrosstermBackend, Terminal};
 use tui_tree_widget::TreeItem;
 
+mod app;
 mod cli;
 mod model;
 mod prom;
 mod ui;
-mod app;
 
 enum Event<I> {
     Input(I),
@@ -84,7 +84,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (notify_shutdown, _) = broadcast::channel(1);
     let mut notify_shutdown_rx1 = notify_shutdown.subscribe();
     let (tx, mut rx) = mpsc::channel(1);
-    let handle = task::spawn(async move {
+    log::info!("Spawning input loop...");
+    task::spawn(async move {
         loop {
             let timeout = tick_rate
                 .checked_sub(last_tick.elapsed())
@@ -117,17 +118,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     //render loop, which calls terminal.draw() on every iteration.
-    log::info!("Before render loop");
+    log::info!("Starting render loop...");
     loop {
         terminal.draw(|f| ui::render(f, &mut app))?;
 
         match rx.recv().await {
             Some(Event::Input(event)) => match event.code {
                 KeyCode::Char('q') => {
-                    notify_shutdown.send(());
+                    log::info!("Shuting down...");
+                    if let Err(e) = notify_shutdown.send(()) {
+                        log::error!("Error sending shutdown signal: {}", e);
+                    }
                     break;
-                },
-                _ => app.dispatch_input(event.code)
+                }
+                _ => app.dispatch_input(event.code),
             },
             Some(Event::Tick) => {}
             None => {}
