@@ -3,8 +3,8 @@ use super::Metric;
 use reqwest;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn query(url: &str) -> Vec<Metric> {
-    let resp = reqwest::blocking::get(url).unwrap().text().unwrap();
+pub async fn query(url: &str) -> Vec<Metric> {
+    let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
     let lines = resp
         .split("\n")
         .map(|s| String::from(s))
