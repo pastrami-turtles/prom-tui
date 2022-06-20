@@ -149,7 +149,6 @@ pub fn extract_labels(line: &String) -> Option<String> {
 
 #[allow(dead_code)]
 pub fn extract_labels_with_rgx(line: &str) -> Option<String> {
-    log::debug!("extract_labels2: {}", line);
     let regex = Regex::new(r"\{(.*?)\}").unwrap();
     if let Some(caps) = regex.captures_iter(line).next() {
         return Some(caps[1].to_string());
@@ -170,7 +169,6 @@ pub fn decode_labels(labels: &str) -> HashMap<String, String> {
 
 #[allow(dead_code)]
 pub fn decode_labels_with_rgx(labels_to_split: &str) -> HashMap<String, String> {
-    log::debug!("decode_labels: {}", labels_to_split);
     let regex = Regex::new(r#"(\w+)="(\w+)""#).unwrap(); // using the global "/g" mode to capture all the occurrences without stopping at the first match
     let mut labels = HashMap::new();
     for cap in regex.captures_iter(labels_to_split) {
