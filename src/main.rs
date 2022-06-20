@@ -1,6 +1,6 @@
 use crate::logging::app_config;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -11,17 +11,25 @@ use std::{
     io,
     time::{Duration, Instant},
 };
+use tokio::sync::{broadcast, mpsc};
+use tokio::task;
 use tui::{backend::CrosstermBackend, Terminal};
 use tui_tree_widget::TreeItem;
 
+mod app;
 mod cli;
 mod logging;
 mod model;
 mod prom;
 mod ui;
-mod app;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+enum Event<I> {
+    Input(I),
+    Tick,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // read cli arguments
     let matches = cli::build().get_matches();
 
@@ -51,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_tick = Instant::now();
     let tick_rate = Duration::from_millis(250);
 
-    let metrics: Vec<Metric> = prom::query(endpoint.borrow());
+    let metrics: Vec<Metric> = prom::query(endpoint.borrow()).await;
 
     let mut tree_items = vec![];
     for metric in metrics {
@@ -63,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut events = model::StatefulTree::with_items(tree_items);
-    
+
     // select first element at start
     events.next();
 
@@ -76,26 +84,59 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         active_widget: ui::ActiveWidget::Metrics,
     };
 
+    // Set up an input loop using TUI and Crossterm
+    let mut last_tick = Instant::now();
+    let tick_rate = Duration::from_millis(250);
+    let (notify_shutdown, _) = broadcast::channel(1);
+    let mut notify_shutdown_rx1 = notify_shutdown.subscribe();
+    let (tx, mut rx) = mpsc::channel(1);
+    let handle = task::spawn(async move {
+        loop {
+            let timeout = tick_rate
+                .checked_sub(last_tick.elapsed())
+                .unwrap_or_else(|| Duration::from_secs(0));
+
+            if crossterm::event::poll(timeout).expect("that poll works") {
+                if let CEvent::Key(key) = event::read().expect("that can read events") {
+                    if let Err(e) = tx.send(Event::Input(key)).await {
+                        log::error!("Error sending event: {}", e);
+                    }
+                }
+            }
+
+            if last_tick.elapsed() >= tick_rate {
+                tokio::select! {
+                    sended = tx.send(Event::Tick) => {
+                        if let Err(e) = sended {
+                            log::error!("Error sending tick: {}", e);
+                        }
+                    }
+                    _ = notify_shutdown_rx1.recv() => {
+                        log::info!("Received shutdown signal");
+                        drop(tx);
+                        break;
+                    }
+                }
+                last_tick = Instant::now();
+            }
+        }
+    });
+
+    //render loop, which calls terminal.draw() on every iteration.
+    log::info!("Before render loop");
     loop {
         terminal.draw(|f| ui::render(f, &mut app))?;
 
-        let timeout = tick_rate
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
-
-        if crossterm::event::poll(timeout)? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => break,
-                    _ => {
-                        app.dispatch_input(key.code);
-                    },
+        match rx.recv().await {
+            Some(Event::Input(event)) => match event.code {
+                KeyCode::Char('q') => {
+                    notify_shutdown.send(());
+                    break;
                 }
-            }
-        }
-
-        if last_tick.elapsed() >= tick_rate {
-            last_tick = Instant::now();
+                _ => app.dispatch_input(event.code),
+            },
+            Some(Event::Tick) => {}
+            None => {}
         }
     }
 
