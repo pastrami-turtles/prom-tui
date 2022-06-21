@@ -35,6 +35,9 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
     match metric_type.as_str() {
         "gauge" => {
             for line in lines.iter().skip(2) {
+                if line == "" {
+                    continue;
+                }
                 let labels = extract_labels(&line);
                 let (labels_map, key) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
@@ -52,6 +55,9 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
         }
         "counter" => {
             for line in lines.iter().skip(2) {
+                if line == "" {
+                    continue;
+                }
                 let labels = extract_labels(&line);
                 let (labels_map, key) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
