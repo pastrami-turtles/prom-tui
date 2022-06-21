@@ -7,7 +7,9 @@
 		"serayuzgur.crates",
 		"vadimcn.vscode-lldb"
 	],
-	"dockerFile": "Dockerfile",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspace",
 	"settings": {
 		"editor.formatOnSave": true,
 		"terminal.integrated.profiles.linux": {
@@ -20,6 +22,5 @@
 			"**/CODE_OF_CONDUCT.md": true,
 			"**/LICENSE": true
 		}
-	},
-	"postStartCommand": "nohup bash -c '/home/serve-metrics.sh &' >/dev/null 2>&1"
+	}
 }
