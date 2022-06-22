@@ -291,6 +291,25 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_decode_metric() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let mut lines = Vec::new();
+        lines.push(String::from("# HELP metric_1 Description of the metric"));
+        lines.push(String::from("# TYPE metric_1 gauge"));
+        lines.push(String::from("metric_1{shard=\"0\"} 10.000007"));
+        // insert to check if empty lines can be handled
+        lines.push(String::from(""));
+        let metric = decode_metric(
+            lines,
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        );
+        assert_eq!(metric.details.name, "metric_1");
+    }
+
     fn generate_metric_lines() -> Vec<String> {
         let mut lines = Vec::new();
         lines.push(String::from("# HELP metric_1 Description of the metric"));
