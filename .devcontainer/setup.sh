@@ -11,6 +11,7 @@ apt-get install -y \
   build-essential \
   openssl \
   libssl-dev \
+  netcat \
   pkg-config
 
 ## Install rustup and common components
