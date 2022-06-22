@@ -25,4 +25,9 @@ If no endpoint is provided the default value is http://localhost:8080/metrics
 
 ## Local development
 
-Start any component exposing a Prometheus endpoint or use the provided script '.devcontainer/serve-metrics.sh' to expose some example metrics.
+Prereqs:
+* VS Code (incl. extentions)
+  * ms-vscode-remote.remote-containers
+* Docker
+
+Using the 'Remote - Containers' extension, the command 'Reopen in Container' will open the project within the configured container environment. This also starts a second container which exposes Prometheus metrics on http://localhost:8080/metrics.
