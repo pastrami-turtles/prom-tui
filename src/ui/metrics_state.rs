@@ -1,3 +1,4 @@
+use crate::Metric;
 use tui_tree_widget::{flatten, get_identifier_without_leaf, TreeItem, TreeState};
 
 pub struct StatefulTree {
@@ -14,7 +15,15 @@ impl StatefulTree {
         }
     }
 
-    pub fn with_items(items: Vec<TreeItem<'static>>) -> Self {
+    pub fn with_items(metrics: &Vec<Metric>) -> Self {
+        let mut items = vec![];
+        for metric in metrics {
+            let mut metric_leaf = TreeItem::new_leaf(metric.details.name.clone());
+            for time_series in metric.time_series.keys() {
+                metric_leaf.add_child(TreeItem::new_leaf(time_series.clone()));
+            }
+            items.push(metric_leaf);
+        }
         Self {
             state: TreeState::default(),
             items,

@@ -1,15 +1,26 @@
-use crate::ui::ActiveWidget;
-use crate::ui::InteractiveWidget;
+use crate::prom::Metric;
+use crate::ui::{ActiveWidget, GraphWidget, InteractiveWidget, MetricsWidget, SearchWidget};
 use crossterm::event::KeyCode;
 
 pub struct App<'a> {
-    pub search_widget: crate::ui::SearchWidget,
-    pub metrics_widget: crate::ui::MetricsWidget<'a>,
-    pub graph_widget: crate::ui::GraphWidget,
+    pub metrics: &'a mut Vec<Metric>,
+    pub search_widget: SearchWidget,
+    pub metrics_widget: MetricsWidget,
+    pub graph_widget: GraphWidget,
     pub active_widget: ActiveWidget,
 }
 
 impl<'a> App<'a> {
+    pub fn new(metrics: &'a mut Vec<Metric>) -> Self {
+        Self {
+            search_widget: SearchWidget::new(false, vec![]),
+            metrics_widget: MetricsWidget::new(true, metrics),
+            graph_widget: GraphWidget::new(false),
+            active_widget: ActiveWidget::Metrics,
+            metrics,
+        }
+    }
+
     pub fn dispatch_input(&mut self, key_code: KeyCode) {
         match key_code {
             KeyCode::Tab => {

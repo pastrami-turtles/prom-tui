@@ -13,11 +13,9 @@ use std::{
 use tokio::sync::{broadcast, mpsc};
 use tokio::task;
 use tui::{backend::CrosstermBackend, Terminal};
-use tui_tree_widget::TreeItem;
 
 mod app;
 mod cli;
-mod model;
 mod prom;
 mod ui;
 
@@ -54,29 +52,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let metrics: Vec<Metric> = prom::query(endpoint.borrow()).await;
-    let mut tree_items = vec![];
-    for metric in metrics {
-        let mut metric_leaf = TreeItem::new_leaf(metric.details.name);
-        for time_series in metric.time_series.keys() {
-            metric_leaf.add_child(TreeItem::new_leaf(time_series.clone()));
-        }
-        tree_items.push(metric_leaf);
-    }
-
-    let mut events = model::StatefulTree::with_items(tree_items);
-
-    // select first element at start
-    events.next();
-
-    //let mut search_input: Vec<char> = vec![];
-
-    let mut app = app::App {
-        search_widget: ui::SearchWidget::new(false, vec![]),
-        metrics_widget: ui::MetricsWidget::new(true, &mut events),
-        graph_widget: ui::GraphWidget::new(false),
-        active_widget: ui::ActiveWidget::Metrics,
-    };
+    let mut metrics: Vec<Metric> = prom::query(endpoint.borrow()).await;
+    let mut app = app::App::new(&mut metrics);
 
     // Set up an input loop using TUI and Crossterm
     let mut last_tick = Instant::now();

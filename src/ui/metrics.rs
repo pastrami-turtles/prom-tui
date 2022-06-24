@@ -1,4 +1,5 @@
-use crate::model::StatefulTree;
+use crate::prom::Metric;
+use crate::ui::metrics_state::StatefulTree;
 use crossterm::event::KeyCode;
 use tui::{
     backend::Backend,
@@ -9,23 +10,28 @@ use tui::{
 };
 use tui_tree_widget::Tree;
 
-pub struct MetricsWidget<'a> {
-    pub store: &'a mut StatefulTree,
+pub struct MetricsWidget {
+    pub state: StatefulTree,
     active: bool,
 }
 
-impl<'a> MetricsWidget<'a> {
-    pub fn new(active: bool, store: &'a mut StatefulTree) -> Self {
+impl MetricsWidget {
+    pub fn new(active: bool, metrics: &Vec<Metric>) -> Self {
+        let mut state = StatefulTree::with_items(metrics);
+
+        // select first element at start
+        state.next();
+
         MetricsWidget {
-            active: active,
-            store: store,
+            active,
+            state,
         }
     }
 }
 
-impl crate::ui::InteractiveWidget for MetricsWidget<'_> {
+impl crate::ui::InteractiveWidget for MetricsWidget {
     fn render<B: Backend>(&self, f: &mut Frame<B>, area: &Rect) {
-        let tree = Tree::new(self.store.items.as_ref())
+        let tree = Tree::new(self.state.items.as_ref())
             .block(
                 Block::default()
                     .title(super::style::create_styled_title("Metrics", self.active))
@@ -37,7 +43,7 @@ impl crate::ui::InteractiveWidget for MetricsWidget<'_> {
                     .fg(Color::White)
                     .add_modifier(Modifier::ITALIC),
             );
-        f.render_stateful_widget(tree, *area, &mut self.store.state.to_owned());
+        f.render_stateful_widget(tree, *area, &mut self.state.state.to_owned());
     }
 
     fn set_active(&mut self, active: bool) {
@@ -46,10 +52,10 @@ impl crate::ui::InteractiveWidget for MetricsWidget<'_> {
 
     fn handle_input(&mut self, key_code: crossterm::event::KeyCode) {
         match key_code {
-            KeyCode::Down => self.store.next(),
-            KeyCode::Up => self.store.previous(),
-            KeyCode::Left => self.store.close(),
-            KeyCode::Right => self.store.open(),
+            KeyCode::Down => self.state.next(),
+            KeyCode::Up => self.state.previous(),
+            KeyCode::Left => self.state.close(),
+            KeyCode::Right => self.state.open(),
             _ => {}
         }
     }
