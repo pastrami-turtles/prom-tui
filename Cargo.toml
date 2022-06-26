@@ -8,6 +8,7 @@ tokio = { version = "1.19.0", features = ["full"] }
 tui = "0.18"
 crossterm = "0.23"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
+anyhow = "1"
 clap = { version = "3", features = ["cargo", "env", "wrap_help"] }
 log = "0.4"
 log4rs = "1.0"

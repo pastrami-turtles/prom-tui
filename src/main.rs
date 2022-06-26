@@ -14,6 +14,8 @@ use tokio::sync::{broadcast, mpsc};
 use tokio::task;
 use tui::{backend::CrosstermBackend, Terminal};
 
+use crate::prom::MetricScraper;
+
 mod app;
 mod cli;
 mod prom;
@@ -52,6 +54,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    // TODO move metric_scraper into the app. For now added here just to test that it works
+    // The scraping it is not integrated into the app yet so data in the app are still static
+    let _metric_scraper = MetricScraper::new(endpoint.clone(), 10);
+
+    // TODO Once the scraper is integrated into the app, this should be removed
     let mut metrics: Vec<Metric> = prom::query(endpoint.borrow()).await;
     let mut app = app::App::new(&mut metrics);
 

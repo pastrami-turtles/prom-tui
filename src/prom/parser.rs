@@ -1,5 +1,6 @@
 use regex::Regex;
 
+use super::model::SingleScrapeMetric;
 use super::Metric;
 use super::MetricDetails;
 use super::Sample;
@@ -20,6 +21,58 @@ pub fn parse(lines: Vec<String>, timestamp: u64) -> Vec<Metric> {
     return metrics;
 }
 
+pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> SingleScrapeMetric {
+    let (name, docstring) = extract_name_docstring(&lines[0]).unwrap();
+    let metric_type = extract_type(&lines[1]).unwrap();
+    let mut single_scrape_metric = SingleScrapeMetric {
+        name: name,
+        docstring: docstring,
+        value_per_labels: HashMap::new(),
+    };
+    match metric_type.as_str() {
+        "gauge" => {
+            for line in lines.iter().skip(2) {
+                if line == "" {
+                    continue;
+                }
+                let labels = extract_labels(&line);
+                let (_, key) = extract_labels_key_and_map(labels);
+                let value = extract_value(&line);
+                single_scrape_metric.value_per_labels.insert(
+                    key,
+                    Sample::GaugeSample(SingleValueSample {
+                        timestamp: timestamp,
+                        value: value,
+                    }),
+                );
+            }
+        }
+        "counter" => {
+            for line in lines.iter().skip(2) {
+                if line == "" {
+                    continue;
+                }
+                let labels = extract_labels(&line);
+                let (_, key) = extract_labels_key_and_map(labels);
+                let value = extract_value(&line);
+                single_scrape_metric.value_per_labels.insert(
+                    key,
+                    Sample::CounterSample(SingleValueSample {
+                        timestamp: timestamp,
+                        value: value,
+                    }),
+                );
+            }
+        }
+        "histogram" => {
+            // TODO
+        }
+        _ => {}
+    }
+    single_scrape_metric
+}
+
+// TODO once the new metric is fully integrated this can be removed.
 fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
     let (name, docstring) = extract_name_docstring(&lines[0]).unwrap();
     let metric_type = extract_type(&lines[1]).unwrap();
@@ -82,7 +135,7 @@ fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
     return metric;
 }
 
-fn extract_labels_key_and_map(labels: Option<String>) -> (HashMap<String, String>, String) {
+pub fn extract_labels_key_and_map(labels: Option<String>) -> (HashMap<String, String>, String) {
     match labels {
         Some(labels) => (decode_labels(&labels), labels),
         None => (
@@ -92,7 +145,7 @@ fn extract_labels_key_and_map(labels: Option<String>) -> (HashMap<String, String
     }
 }
 
-fn split_metric_lines(lines: Vec<String>) -> Vec<Vec<String>> {
+pub fn split_metric_lines(lines: Vec<String>) -> Vec<Vec<String>> {
     let mut metrics: Vec<Vec<String>> = Vec::new();
     let mut metric_lines: Vec<String> = Vec::new();
 
@@ -187,6 +240,8 @@ fn extract_value(line: &String) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::prom::test_data::generate_metric_lines;
+
     use super::*;
 
     #[test]
@@ -308,20 +363,22 @@ mod tests {
         assert_eq!(metric.details.name, "metric_1");
     }
 
-    fn generate_metric_lines() -> Vec<String> {
+    #[test]
+    fn test_decode_single_scrape_metric() {
+        use std::time::{SystemTime, UNIX_EPOCH};
         let mut lines = Vec::new();
         lines.push(String::from("# HELP metric_1 Description of the metric"));
         lines.push(String::from("# TYPE metric_1 gauge"));
         lines.push(String::from("metric_1{shard=\"0\"} 10.000007"));
-        lines.push(String::from("# HELP metric_2 Description"));
-        lines.push(String::from("# TYPE metric_2 counter"));
-        lines.push(String::from("metric_2{shard=\"0\",label1=\"test1\"} 5"));
-        lines.push(String::from("# HELP incoming_requests Incoming Requests"));
-        lines.push(String::from("# TYPE incoming_requests counter"));
-        lines.push(String::from("incoming_requests 10"));
-        lines.push(String::from("# HELP connected_clients Connected Clients"));
-        lines.push(String::from("# TYPE connected_clients gauge"));
-        lines.push(String::from("connected_clients 3"));
-        return lines;
+        // insert to check if empty lines can be handled
+        lines.push(String::from(""));
+        let metric = decode_single_scrape_metric(
+            lines,
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        );
+        assert_eq!(metric.name, "metric_1");
     }
 }

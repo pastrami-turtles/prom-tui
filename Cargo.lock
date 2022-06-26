@@ -910,6 +910,7 @@ dependencies = [
 name = "prom-tui"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap 3.1.18",
  "criterion",
  "crossterm",

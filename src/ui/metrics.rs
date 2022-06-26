@@ -22,10 +22,7 @@ impl MetricsWidget {
         // select first element at start
         state.next();
 
-        MetricsWidget {
-            active,
-            state,
-        }
+        MetricsWidget { active, state }
     }
 }
 
