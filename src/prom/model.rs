@@ -3,14 +3,18 @@ use std::collections::HashMap;
 use super::parser::extract_labels_key_and_map;
 
 pub struct MetricHistory {
-    pub metrics: Vec<Metric>,
+    pub metrics: HashMap<String, Metric>,
 }
 
 impl MetricHistory {
     pub fn new() -> Self {
         Self {
-            metrics: Vec::new(),
+            metrics: HashMap::new(),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.metrics.len() == 0
     }
 }
 
@@ -38,11 +42,13 @@ impl SingleScrapeMetric {
     }
 }
 
+#[derive(Clone)]
 pub struct Metric {
     pub details: MetricDetails,
     pub time_series: HashMap<String, TimeSeries>,
 }
 
+#[derive(Clone)]
 pub struct MetricDetails {
     pub name: String,
     pub docstring: String,
@@ -64,22 +70,26 @@ impl Metric {
     }
 }
 
+#[derive(Clone)]
 pub struct TimeSeries {
     pub labels: HashMap<String, String>,
     pub samples: Vec<Sample>,
 }
 
+#[derive(Clone)]
 pub enum Sample {
     GaugeSample(SingleValueSample),
     CounterSample(SingleValueSample),
     HistogramSample(HistogramSample),
 }
 
+#[derive(Clone)]
 pub struct SingleValueSample {
     pub timestamp: u64,
     pub value: f64,
 }
 
+#[derive(Clone)]
 pub struct HistogramSample {
     pub timestamp: u32,
     pub values: Vec<f64>,

@@ -1,23 +1,25 @@
-use crate::prom::Metric;
+use crate::prom::MetricScraper;
 use crate::ui::{ActiveWidget, GraphWidget, InteractiveWidget, MetricsWidget, SearchWidget};
 use crossterm::event::KeyCode;
 
-pub struct App<'a> {
-    pub metrics: &'a mut Vec<Metric>,
+pub struct App {
+    pub metric_scraper: MetricScraper,
     pub search_widget: SearchWidget,
     pub metrics_widget: MetricsWidget,
     pub graph_widget: GraphWidget,
     pub active_widget: ActiveWidget,
 }
 
-impl<'a> App<'a> {
-    pub fn new(metrics: &'a mut Vec<Metric>) -> Self {
+impl App {
+    pub fn new(endpoint: String, scrape_interval: u64) -> Self {
+        let metric_scraper = MetricScraper::new(endpoint, scrape_interval);
+        let metric_history = metric_scraper.get_history();
         Self {
             search_widget: SearchWidget::new(false, vec![]),
-            metrics_widget: MetricsWidget::new(true, metrics),
+            metrics_widget: MetricsWidget::new(true, metric_history),
             graph_widget: GraphWidget::new(false),
             active_widget: ActiveWidget::Metrics,
-            metrics,
+            metric_scraper,
         }
     }
 

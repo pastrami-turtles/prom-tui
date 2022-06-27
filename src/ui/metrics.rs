@@ -1,4 +1,6 @@
-use crate::prom::Metric;
+use std::sync::{Arc, RwLockReadGuard};
+
+use crate::prom::{Metric, MetricHistory};
 use crate::ui::metrics_state::StatefulTree;
 use crossterm::event::KeyCode;
 use tui::{
@@ -13,16 +15,35 @@ use tui_tree_widget::Tree;
 pub struct MetricsWidget {
     pub state: StatefulTree,
     active: bool,
+    metric_history: Arc<std::sync::RwLock<MetricHistory>>,
 }
 
 impl MetricsWidget {
-    pub fn new(active: bool, metrics: &Vec<Metric>) -> Self {
-        let mut state = StatefulTree::with_items(metrics);
+    pub fn new(active: bool, metric_history: Arc<std::sync::RwLock<MetricHistory>>) -> Self {
+        let mut state = StatefulTree::new();
 
         // select first element at start
-        state.next();
+        //state.next();
 
-        MetricsWidget { active, state }
+        MetricsWidget {
+            state,
+            active,
+            metric_history,
+        }
+    }
+
+    // TODO
+    pub fn update_state(&mut self) {
+        let history = self
+            .metric_history
+            .read()
+            .map_err(|err| anyhow::anyhow!("failed to aquire lock of metric history: {}", err))
+            .unwrap();
+        if history.is_empty() {
+            return;
+        }
+        let metrics: Vec<Metric> = history.metrics.values().cloned().collect();
+        self.state = StatefulTree::with_items(&metrics);
     }
 }
 

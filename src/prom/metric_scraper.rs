@@ -2,7 +2,7 @@ use super::{
     model::MetricHistory,
     parser::{decode_single_scrape_metric, split_metric_lines},
 };
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::task;
@@ -27,10 +27,8 @@ impl MetricScraper {
         }
     }
 
-    pub fn get_history(&self) -> anyhow::Result<RwLockReadGuard<MetricHistory>> {
-        self.metrics_history
-            .read()
-            .map_err(|err| anyhow::anyhow!("failed to aquire lock of metric history: {}", err))
+    pub fn get_history(&self) -> Arc<std::sync::RwLock<MetricHistory>> {
+        self.metrics_history.clone()
     }
 }
 
@@ -63,10 +61,7 @@ fn update_history_with_new_scrape(history: &MetricHistoryArc, splitted_metrics: 
     let timestamp = get_timestamp_unix_epoch();
     for part in splitted_metrics {
         let single_scrape_metric = decode_single_scrape_metric(part, timestamp);
-        let metric_to_update_option = history_guard
-            .metrics
-            .iter_mut()
-            .find(|m| m.details.name == single_scrape_metric.name);
+        let metric_to_update_option = history_guard.metrics.get_mut(&single_scrape_metric.name);
         match metric_to_update_option {
             Some(metric_to_update) => {
                 log::debug!("updating metric: {}", metric_to_update.details.name);
@@ -78,7 +73,9 @@ fn update_history_with_new_scrape(history: &MetricHistoryArc, splitted_metrics: 
                     "add metric '{}' for the first time to the history.",
                     metric.details.name
                 );
-                history_guard.metrics.push(metric);
+                history_guard
+                    .metrics
+                    .insert(metric.details.name.clone(), metric);
             }
         }
     }
@@ -144,7 +141,7 @@ mod tests {
             .metrics
             .iter()
             .for_each(|m| {
-                m.time_series.values().for_each(|time_series| {
+                m.1.time_series.values().for_each(|time_series| {
                     assert_eq!(time_series.samples.len(), expected_length);
                 });
             });

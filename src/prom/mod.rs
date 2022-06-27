@@ -7,11 +7,7 @@ pub use self::model::Sample;
 pub use self::model::SingleValueSample;
 pub use self::model::TimeSeries;
 
-mod request;
-pub use self::request::query;
-
 pub(crate) mod parser;
-pub use self::parser::parse;
 
 mod metric_scraper;
 pub use self::metric_scraper::MetricScraper;

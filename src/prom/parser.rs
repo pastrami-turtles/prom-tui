@@ -1,25 +1,9 @@
 use regex::Regex;
 
 use super::model::SingleScrapeMetric;
-use super::Metric;
-use super::MetricDetails;
 use super::Sample;
 use super::SingleValueSample;
-use super::TimeSeries;
 use std::collections::HashMap;
-
-pub fn parse(lines: Vec<String>, timestamp: u64) -> Vec<Metric> {
-    let parts = split_metric_lines(lines);
-
-    let mut metrics: Vec<Metric> = Vec::new();
-
-    for part in parts {
-        let metric = decode_metric(part, timestamp);
-        metrics.push(metric);
-    }
-
-    return metrics;
-}
 
 pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> SingleScrapeMetric {
     let (name, docstring) = extract_name_docstring(&lines[0]).unwrap();
@@ -70,69 +54,6 @@ pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> Single
         _ => {}
     }
     single_scrape_metric
-}
-
-// TODO once the new metric is fully integrated this can be removed.
-fn decode_metric(lines: Vec<String>, timestamp: u64) -> Metric {
-    let (name, docstring) = extract_name_docstring(&lines[0]).unwrap();
-    let metric_type = extract_type(&lines[1]).unwrap();
-
-    let mut metric = Metric {
-        details: MetricDetails {
-            name: name,
-            docstring: docstring,
-        },
-        time_series: HashMap::new(),
-    };
-
-    match metric_type.as_str() {
-        "gauge" => {
-            for line in lines.iter().skip(2) {
-                if line == "" {
-                    continue;
-                }
-                let labels = extract_labels(&line);
-                let (labels_map, key) = extract_labels_key_and_map(labels);
-                let value = extract_value(&line);
-                metric.time_series.insert(
-                    key,
-                    TimeSeries {
-                        labels: labels_map,
-                        samples: vec![Sample::GaugeSample(SingleValueSample {
-                            timestamp: timestamp,
-                            value: value,
-                        })],
-                    },
-                );
-            }
-        }
-        "counter" => {
-            for line in lines.iter().skip(2) {
-                if line == "" {
-                    continue;
-                }
-                let labels = extract_labels(&line);
-                let (labels_map, key) = extract_labels_key_and_map(labels);
-                let value = extract_value(&line);
-                metric.time_series.insert(
-                    key,
-                    TimeSeries {
-                        labels: labels_map,
-                        samples: vec![Sample::CounterSample(SingleValueSample {
-                            timestamp: timestamp,
-                            value: value,
-                        })],
-                    },
-                );
-            }
-        }
-        "histogram" => {
-            // TODO
-        }
-        _ => {}
-    }
-
-    return metric;
 }
 
 pub fn extract_labels_key_and_map(labels: Option<String>) -> (HashMap<String, String>, String) {

@@ -30,7 +30,8 @@ pub fn render<B: Backend>(
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)].as_ref())
         .split(header_content[1]);
-
+    // TODO
+    app.metrics_widget.update_state();
     app.metrics_widget.render(f, &chunks[0]);
     app.graph_widget.render(f, &chunks[1]);
 }
