@@ -44,8 +44,9 @@ async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_in
             update_history_with_new_scrape(history, splitted_metrics);
             // set must_scrape to false to avoid scraping again until the next tick
             must_scrape = false;
-            // after scraping, sleep for the scrape_interval minus 1 millisecond to avoid continue looping
-            sleep(Duration::from_millis(scrape_interval*1000-1)).await;
+            // after scraping, sleep for the remaining time of the tick
+            let sleep_time = tick_rate.checked_sub(last_tick.elapsed()).unwrap_or_default();
+            sleep(sleep_time).await;
         }
 
         // if time has elapsed since last tick, allow to scrape the endpoint again and update history
