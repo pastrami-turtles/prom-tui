@@ -34,7 +34,7 @@ impl MetricScraper {
 
 async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_interval: u64) {
     let mut last_tick = Instant::now();
-    let tick_rate = Duration::from_millis(scrape_interval*1000);
+    let tick_rate = Duration::from_millis(scrape_interval * 1000);
     let mut must_scrape = true;
 
     loop {
@@ -45,7 +45,9 @@ async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_in
             // set must_scrape to false to avoid scraping again until the next tick
             must_scrape = false;
             // after scraping, sleep for the remaining time of the tick
-            let sleep_time = tick_rate.checked_sub(last_tick.elapsed()).unwrap_or_default();
+            let sleep_time = tick_rate
+                .checked_sub(last_tick.elapsed())
+                .unwrap_or_default();
             sleep(sleep_time).await;
         }
 
