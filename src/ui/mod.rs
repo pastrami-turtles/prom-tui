@@ -9,7 +9,6 @@ mod graph;
 pub use self::graph::GraphWidget;
 mod metrics;
 pub use self::metrics::MetricsWidget;
-mod metrics_state;
 mod search;
 pub use self::search::SearchWidget;
 mod style;

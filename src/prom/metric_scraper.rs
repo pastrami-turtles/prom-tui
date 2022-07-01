@@ -5,7 +5,7 @@ use super::{
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::task;
+use tokio::{task, time::sleep};
 
 type MetricHistoryArc = Arc<RwLock<MetricHistory>>;
 pub struct MetricScraper {
@@ -34,7 +34,7 @@ impl MetricScraper {
 
 async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_interval: u64) {
     let mut last_tick = Instant::now();
-    let tick_rate = Duration::from_secs(scrape_interval);
+    let tick_rate = Duration::from_millis(scrape_interval*1000);
     let mut must_scrape = true;
 
     loop {
@@ -44,6 +44,8 @@ async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_in
             update_history_with_new_scrape(history, splitted_metrics);
             // set must_scrape to false to avoid scraping again until the next tick
             must_scrape = false;
+            // after scraping, sleep for the scrape_interval minus 1 millisecond to avoid continue looping
+            sleep(Duration::from_millis(scrape_interval*1000-1)).await;
         }
 
         // if time has elapsed since last tick, allow to scrape the endpoint again and update history
