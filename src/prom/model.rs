@@ -16,6 +16,13 @@ impl MetricHistory {
     pub fn is_empty(&self) -> bool {
         self.metrics.len() == 0
     }
+
+    pub fn get_metrics_headers(&self) -> Vec<String> {
+        self.metrics
+            .iter()
+            .map(|(k,_)| k.clone())
+            .collect()
+    }
 }
 
 pub struct SingleScrapeMetric {

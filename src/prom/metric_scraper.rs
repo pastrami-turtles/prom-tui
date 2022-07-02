@@ -2,7 +2,7 @@ use super::{
     model::MetricHistory,
     parser::{decode_single_scrape_metric, split_metric_lines},
 };
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::{task, time::sleep};
@@ -29,6 +29,12 @@ impl MetricScraper {
 
     pub fn get_history(&self) -> Arc<std::sync::RwLock<MetricHistory>> {
         self.metrics_history.clone()
+    }
+    
+    pub fn get_history_lock(&self) -> anyhow::Result<RwLockReadGuard<MetricHistory>> {
+        self.metrics_history
+        .read()
+        .map_err(|err| anyhow::anyhow!("failed to aquire lock of metrics history: {}", err))
     }
 }
 

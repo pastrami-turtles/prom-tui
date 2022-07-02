@@ -16,14 +16,20 @@ use std::{
 
 use tui::{backend::CrosstermBackend, Terminal};
 
-use crate::{app, ui};
+use crate::{app as app_old, ui as ui_old, prom::MetricScraper};
 
+use crate::interactive::app::App;
+mod ui;
+mod app;
+mod list;
 enum Event<I> {
     Input(I),
     Tick,
 }
 
 pub async fn show(endpoint: String, scrape_interval: u64) -> Result<(), Box<dyn Error>> {
+    let metric_scraper = MetricScraper::new(endpoint.clone(), scrape_interval.clone());
+    let mut app = App::new(&endpoint, scrape_interval, metric_scraper);
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -31,7 +37,7 @@ pub async fn show(endpoint: String, scrape_interval: u64) -> Result<(), Box<dyn 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = app::App::new(endpoint.clone(), 10);
+    // let mut app = app_old::App::new(endpoint.clone(), 10);
 
     // Set up an input loop using TUI and Crossterm
     let mut last_tick = Instant::now();
@@ -75,7 +81,7 @@ pub async fn show(endpoint: String, scrape_interval: u64) -> Result<(), Box<dyn 
     //render loop, which calls terminal.draw() on every iteration.
     log::info!("Starting render loop...");
     loop {
-        terminal.draw(|f| ui::render(f, &mut app))?;
+        terminal.draw(|f| ui::draw(f, &mut app).expect("failed to draw ui"))?;
 
         match rx.recv().await {
             Some(Event::Input(event)) => match event.code {
@@ -86,7 +92,9 @@ pub async fn show(endpoint: String, scrape_interval: u64) -> Result<(), Box<dyn 
                     }
                     break;
                 }
-                _ => app.dispatch_input(event.code),
+                KeyCode::Down  => app.on_down()?,
+                KeyCode::Up  => app.on_up()?,
+                _ => {} //app.dispatch_input(event.code),
             },
             Some(Event::Tick) => {}
             None => {}
