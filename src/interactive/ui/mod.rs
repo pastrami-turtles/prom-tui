@@ -7,6 +7,10 @@ use tui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragr
 use tui::Frame;
 
 use crate::interactive::app::{App, ElementInFocus};
+use crate::prom::Metric;
+
+mod graph_data;
+mod history;
 
 const fn focus_color(has_focus: bool) -> Color {
     if has_focus {
@@ -65,23 +69,26 @@ where
             .get_history_lock()?
             .get_metric(selected_metric)
         {
-            let time_series_keys: Vec<String> =
-                metric.time_series.iter().map(|(k, _)| k.clone()).collect();
             let chunks = Layout::default()
                 .constraints([Constraint::Percentage(35), Constraint::Percentage(65)].as_ref())
                 .direction(Direction::Horizontal)
                 .split(area);
 
-            draw_list(
+            let chunks_left = Layout::default()
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+                .direction(Direction::Vertical)
+                .split(chunks[0]);
+
+            draw_details(
                 f,
                 chunks[1],
-                &time_series_keys,
+                chunks_left[1],
+                metric,
                 matches!(app.focus, ElementInFocus::LabelsView),
                 &mut app.labels_list_state,
-                "Labels",
+                &app.selected_label,
             );
-
-            chunks[0]
+            chunks_left[0]
         } else {
             area
         }
@@ -133,4 +140,32 @@ fn draw_list<B>(
             .add_modifier(Modifier::BOLD),
     );
     f.render_stateful_widget(list, area, state);
+}
+
+fn draw_details<B>(
+    f: &mut Frame<B>,
+    chunk_right: Rect,
+    chunk_left: Rect,
+    metric: &Metric,
+    is_in_focus: bool,
+    labels_state: &mut ListState,
+    selected_label_option: &Option<String>,
+) where
+    B: Backend,
+{
+    let time_series_keys: Vec<String> = metric.time_series.iter().map(|(k, _)| k.clone()).collect();
+    let chunks = Layout::default()
+        .constraints([Constraint::Percentage(25), Constraint::Min(16)].as_ref())
+        .split(chunk_right);
+    draw_list(
+        f,
+        chunks[0],
+        &time_series_keys,
+        is_in_focus,
+        labels_state,
+        "Labels",
+    );
+    if let Some(selected_label) = selected_label_option {
+        history::draw(f, chunks[1], chunk_left, metric, selected_label);
+    }
 }

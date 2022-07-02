@@ -21,6 +21,7 @@ use crate::{app as app_old, prom::MetricScraper, ui as ui_old};
 use crate::interactive::app::App;
 mod app;
 mod ui;
+
 enum Event<I> {
     Input(I),
     Tick,
