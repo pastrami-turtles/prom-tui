@@ -16,12 +16,11 @@ use std::{
 
 use tui::{backend::CrosstermBackend, Terminal};
 
-use crate::{app as app_old, ui as ui_old, prom::MetricScraper};
+use crate::{app as app_old, prom::MetricScraper, ui as ui_old};
 
 use crate::interactive::app::App;
-mod ui;
 mod app;
-mod list;
+mod ui;
 enum Event<I> {
     Input(I),
     Tick,
@@ -92,8 +91,9 @@ pub async fn show(endpoint: String, scrape_interval: u64) -> Result<(), Box<dyn 
                     }
                     break;
                 }
-                KeyCode::Down  => app.on_down()?,
-                KeyCode::Up  => app.on_up()?,
+                KeyCode::Down => app.on_down()?,
+                KeyCode::Up => app.on_up()?,
+                KeyCode::Tab | KeyCode::BackTab => app.on_tab()?,
                 _ => {} //app.dispatch_input(event.code),
             },
             Some(Event::Tick) => {}

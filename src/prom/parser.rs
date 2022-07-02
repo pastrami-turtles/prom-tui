@@ -60,8 +60,8 @@ pub fn extract_labels_key_and_map(labels: Option<String>) -> (HashMap<String, St
     match labels {
         Some(labels) => (decode_labels(&labels), labels),
         None => (
-            HashMap::from([("key".to_string(), "value".to_string())]),
-            String::from("value"),
+            HashMap::from([("key".to_string(), "single-value-with-no-labels".to_string())]),
+            String::from("single-value-with-no-labels"),
         ),
     }
 }

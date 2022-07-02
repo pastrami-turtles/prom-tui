@@ -1,21 +1,28 @@
-use tui::backend::Backend;
-use tui::Frame;
-use tui::layout::{Constraint, Direction, Layout, Rect};
-use tui::text::Spans;
-use tui::widgets::{Block, Borders, Paragraph, Wrap};
 use std::error::Error;
+use tui::backend::Backend;
+use tui::layout::{Constraint, Direction, Layout, Rect};
+use tui::style::{Color, Modifier, Style};
+use tui::text::{Span, Spans};
+use tui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap};
+use tui::Frame;
 
 use crate::interactive::app::{App, ElementInFocus};
 
-
+const fn focus_color(has_focus: bool) -> Color {
+    if has_focus {
+        Color::LightGreen
+    } else {
+        Color::Gray
+    }
+}
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) -> Result<(), Box<dyn Error>> {
-  let chunks = Layout::default()
-      .constraints([Constraint::Length(2 + 3), Constraint::Min(8)].as_ref())
-      .split(f.size());
-  draw_info_header(f, chunks[0], app);
-  // draw_main(f, chunks[1], app)?;
-  Ok(())
+    let chunks = Layout::default()
+        .constraints([Constraint::Length(2 + 3), Constraint::Min(8)].as_ref())
+        .split(f.size());
+    draw_info_header(f, chunks[0], app);
+    draw_main(f, chunks[1], app)?;
+    Ok(())
 }
 
 fn draw_info_header<B>(f: &mut Frame<B>, area: Rect, app: &App)
@@ -45,58 +52,85 @@ where
     f.render_widget(paragraph, area);
 }
 
-// fn draw_main<B>(f: &mut Frame<B>, area: Rect, app: &mut App) -> Result<(), Box<dyn Error>>
-// where
-//     B: Backend,
-// {
-//     let history = app.metric_scraper.get_history_lock()?;
-//     let tree_items = history.to_tte();
+fn draw_main<B>(f: &mut Frame<B>, area: Rect, app: &mut App) -> Result<(), Box<dyn Error>>
+where
+    B: Backend,
+{
+    let metric_headers = app.metric_scraper.get_history_lock()?.get_metrics_headers();
 
-//     // Move opened_topics over to TreeState
-//     app.topic_overview_state.close_all();
-//     for topic in &app.opened_topics {
-//         app.topic_overview_state
-//             .open(history.get_tree_identifier(topic).unwrap_or_default());
-//     }
+    #[allow(clippy::option_if_let_else)]
+    let metric_headers_area = if let Some(selected_metric) = &app.selected_metric {
+        if let Some(metric) = app
+            .metric_scraper
+            .get_history_lock()?
+            .get_metric(selected_metric)
+        {
+            let time_series_keys: Vec<String> =
+                metric.time_series.iter().map(|(k, _)| k.clone()).collect();
+            let chunks = Layout::default()
+                .constraints([Constraint::Percentage(35), Constraint::Percentage(65)].as_ref())
+                .direction(Direction::Horizontal)
+                .split(area);
 
-//     // Ensure selected topic is selected index
-//     app.topic_overview_state.select(
-//         app.selected_topic
-//             .as_ref()
-//             .and_then(|selected_topic| history.get_tree_identifier(selected_topic))
-//             .unwrap_or_default(),
-//     );
+            draw_list(
+                f,
+                chunks[1],
+                &time_series_keys,
+                matches!(app.focus, ElementInFocus::LabelsView),
+                &mut app.labels_list_state,
+                "Labels",
+            );
 
-//     #[allow(clippy::option_if_let_else)]
-//     let overview_area = if let Some(selected_topic) = &app.selected_topic {
-//         if let Some(topic_history) = history.get(selected_topic) {
-//             let chunks = Layout::default()
-//                 .constraints([Constraint::Percentage(35), Constraint::Percentage(65)].as_ref())
-//                 .direction(Direction::Horizontal)
-//                 .split(area);
+            chunks[0]
+        } else {
+            area
+        }
+    } else {
+        area
+    };
 
-//             draw_details(
-//                 f,
-//                 chunks[1],
-//                 topic_history,
-//                 matches!(app.focus, ElementInFocus::JsonPayload),
-//                 &mut app.json_view_state,
-//             );
+    draw_list(
+        f,
+        metric_headers_area,
+        &metric_headers,
+        matches!(app.focus, ElementInFocus::MetricHeaders),
+        &mut app.metric_list_state,
+        "Metrics",
+    );
+    Ok(())
+}
 
-//             chunks[0]
-//         } else {
-//             area
-//         }
-//     } else {
-//         area
-//     };
-
-//     draw_overview(
-//         f,
-//         overview_area,
-//         &tree_items,
-//         matches!(app.focus, ElementInFocus::TopicOverview),
-//         &mut app.topic_overview_state,
-//     );
-//     Ok(())
-// }
+fn draw_list<B>(
+    f: &mut Frame<B>,
+    area: Rect,
+    items: &[String],
+    has_focus: bool,
+    state: &mut ListState,
+    title_prefix: &str,
+) where
+    B: Backend,
+{
+    let title = format!("{} ({})", title_prefix, items.len());
+    let list_block = Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::White))
+        .title(title)
+        .border_type(BorderType::Plain);
+    let list_item: Vec<ListItem> = items
+        .iter()
+        .map(|header| {
+            ListItem::new(Spans::from(vec![Span::styled(
+                header.clone(),
+                Style::default(),
+            )]))
+        })
+        .collect();
+    let focus_color = focus_color(has_focus);
+    let list = List::new(list_item).block(list_block).highlight_style(
+        Style::default()
+            .bg(focus_color)
+            .fg(Color::Black)
+            .add_modifier(Modifier::BOLD),
+    );
+    f.render_stateful_widget(list, area, state);
+}

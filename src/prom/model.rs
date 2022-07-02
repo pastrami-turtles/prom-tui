@@ -18,10 +18,11 @@ impl MetricHistory {
     }
 
     pub fn get_metrics_headers(&self) -> Vec<String> {
-        self.metrics
-            .iter()
-            .map(|(k,_)| k.clone())
-            .collect()
+        self.metrics.iter().map(|(k, _)| k.clone()).collect()
+    }
+
+    pub fn get_metric(&self, metric_name: &str) -> Option<&Metric> {
+        self.metrics.get(metric_name)
     }
 }
 

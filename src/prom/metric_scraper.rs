@@ -30,11 +30,11 @@ impl MetricScraper {
     pub fn get_history(&self) -> Arc<std::sync::RwLock<MetricHistory>> {
         self.metrics_history.clone()
     }
-    
+
     pub fn get_history_lock(&self) -> anyhow::Result<RwLockReadGuard<MetricHistory>> {
         self.metrics_history
-        .read()
-        .map_err(|err| anyhow::anyhow!("failed to aquire lock of metrics history: {}", err))
+            .read()
+            .map_err(|err| anyhow::anyhow!("failed to aquire lock of metrics history: {}", err))
     }
 }
 
@@ -100,6 +100,7 @@ fn get_timestamp_unix_epoch() -> u64 {
     timestamp
 }
 
+// TODO handle error when scraping endpoint is down and make app surviving connection issues.
 async fn get_splitted_metrics_from_endpoint(url: &str) -> Vec<Vec<String>> {
     let resp = reqwest::get(url)
         .await
