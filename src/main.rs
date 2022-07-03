@@ -56,11 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut last_tick = Instant::now();
-    let tick_rate = Duration::from_millis(250);
-
     let metrics: Vec<Metric> = prom::query(endpoint.borrow()).await;
-
     let mut tree_items = vec![];
     for metric in metrics {
         let mut metric_leaf = TreeItem::new_leaf(metric.details.name);
