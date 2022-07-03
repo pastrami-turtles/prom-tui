@@ -10,8 +10,8 @@ pub fn app_config(file_name: &str, level: Option<&str>) -> Config {
     };
     if level.is_err() {
         println!(
-            "{}, falling back to default",
-            level.err().unwrap_or("no value for log level")
+            "error message: {}, falling back to default",
+            level.unwrap_err()
         )
     }
     let log_file = FileAppender::builder()
@@ -43,6 +43,7 @@ fn convert_to_level(level: &str) -> Result<LevelFilter, &str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use log::{Log, Metadata};
     use regex::Regex;
     use std::fs::{remove_file, File};
     use std::io::Read;
@@ -51,7 +52,7 @@ mod tests {
     #[test]
     fn test_logger_config_creation() {
         let file_name = "test.file";
-        log4rs::init_config(app_config(file_name, Some("info"))).unwrap();
+        let handle = log4rs::init_config(app_config(file_name, Some("info"))).unwrap();
         log::info!("test logging");
 
         let path = Path::new(file_name);
