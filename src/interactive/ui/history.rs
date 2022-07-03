@@ -38,7 +38,7 @@ where
         .get(selected_label)
         .expect("values for selected label")
         .samples;
-    let mut title = format!("History ({})", samples.len());
+    let title = format!("History ({})", samples.len());
 
     let rows = samples.iter().map(|entry| {
         let (timestamp, value) = match entry {

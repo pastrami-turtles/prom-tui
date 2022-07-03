@@ -43,10 +43,7 @@ impl GraphData {
         let x_min = data.first().unwrap().0;
         let x_max = data.last().unwrap().0;
 
-        let y_min = data
-            .iter()
-            .map(|(_, v)| *v)
-            .fold(f64::MAX, f64::min);
+        let y_min = data.iter().map(|(_, v)| *v).fold(f64::MAX, f64::min);
         let y_max = data
             .iter()
             .map(|(_, v)| *v)

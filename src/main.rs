@@ -1,18 +1,11 @@
 use regex::Regex;
 
-mod app;
 mod cli;
 mod interactive;
 mod prom;
-mod ui;
-enum Event<I> {
-    Input(I),
-    Tick,
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // initialize the logger
     //TODO in the future, this should be not provided by the user but embedded in the binary
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
     log::info!("Starting the application!");
@@ -31,6 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     log::info!("Reading metrics from endpoint: {}", endpoint);
 
-    interactive::show(endpoint.clone(), 10).await;
+    // start dashboard
+    interactive::show(endpoint.clone(), 10).await?;
     Ok(())
 }

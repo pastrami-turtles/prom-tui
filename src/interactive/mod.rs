@@ -16,9 +16,7 @@ use std::{
 
 use tui::{backend::CrosstermBackend, Terminal};
 
-use crate::{app as app_old, prom::MetricScraper, ui as ui_old};
-
-use crate::interactive::app::App;
+use crate::{interactive::app::App, prom::MetricScraper};
 mod app;
 mod ui;
 

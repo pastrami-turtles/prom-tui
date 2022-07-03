@@ -11,6 +11,8 @@ use crate::prom::Metric;
 
 mod graph_data;
 mod history;
+mod search;
+mod style;
 
 const fn focus_color(has_focus: bool) -> Color {
     if has_focus {

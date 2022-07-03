@@ -1,4 +1,4 @@
-use std::{collections::HashSet, error::Error};
+use std::error::Error;
 
 use crate::prom::MetricScraper;
 use tui::widgets::ListState;

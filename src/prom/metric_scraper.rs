@@ -27,10 +27,6 @@ impl MetricScraper {
         }
     }
 
-    pub fn get_history(&self) -> Arc<std::sync::RwLock<MetricHistory>> {
-        self.metrics_history.clone()
-    }
-
     pub fn get_history_lock(&self) -> anyhow::Result<RwLockReadGuard<MetricHistory>> {
         self.metrics_history
             .read()
