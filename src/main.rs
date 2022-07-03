@@ -22,7 +22,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .to_string(),
         None => endpoint_option.unwrap().to_string(),
     };
-    let scrape_interval = matches.value_of("Scrape-Interval").expect("scrape interval value to be available").parse::<u64>().expect("scrape interval value to be parsable to u64");
+    let scrape_interval = matches
+        .value_of("Scrape-Interval")
+        .expect("scrape interval value to be available")
+        .parse::<u64>()
+        .expect("scrape interval value to be parsable to u64");
     log::info!("Reading metrics from endpoint: {}", endpoint);
     log::info!("Scraping interval is: {}s", scrape_interval);
 

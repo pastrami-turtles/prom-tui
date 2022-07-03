@@ -42,8 +42,14 @@ async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_in
     loop {
         // scrape and update history
         if must_scrape {
-            let splitted_metrics = get_splitted_metrics_from_endpoint(&url).await;
-            update_history_with_new_scrape(history, splitted_metrics);
+            let splitted_metrics_result = get_splitted_metrics_from_endpoint(&url).await;
+            if let Ok(splitted_metrics) = splitted_metrics_result {
+                update_history_with_new_scrape(history, splitted_metrics);
+            } else {
+                log::error!(
+                    "Not able to scrape the metrics endpoint. Trying again at the next tick."
+                );
+            }
             // set must_scrape to false to avoid scraping again until the next tick
             must_scrape = false;
             // after scraping, sleep for the remaining time of the tick
@@ -64,7 +70,9 @@ async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_in
 }
 
 fn update_history_with_new_scrape(history: &MetricHistoryArc, splitted_metrics: Vec<Vec<String>>) {
-    let mut history_guard = history.write().unwrap();
+    let mut history_guard = history
+        .write()
+        .expect("to acquire write lock of metrics history");
     let timestamp = get_timestamp_unix_epoch();
     for part in splitted_metrics {
         let single_scrape_metric = decode_single_scrape_metric(part, timestamp);
@@ -97,18 +105,13 @@ fn get_timestamp_unix_epoch() -> u64 {
 }
 
 // TODO handle error when scraping endpoint is down and make app surviving connection issues.
-async fn get_splitted_metrics_from_endpoint(url: &str) -> Vec<Vec<String>> {
-    let resp = reqwest::get(url)
-        .await
-        .expect("a ok response from scraping endpoint!")
-        .text()
-        .await
-        .expect("a text response from scraping endpoint!");
+async fn get_splitted_metrics_from_endpoint(url: &str) -> anyhow::Result<Vec<Vec<String>>> {
+    let resp = reqwest::get(url).await?.text().await?;
     let lines = resp
         .split("\n")
         .map(|s| String::from(s))
         .collect::<Vec<String>>();
-    return split_metric_lines(lines);
+    return Ok(split_metric_lines(lines));
 }
 
 #[cfg(test)]
