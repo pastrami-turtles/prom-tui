@@ -32,6 +32,21 @@ pub fn build() -> Command<'static> {
                 .long_help("The port number used in the default prometheus endpoint. Example: http://localhost:<PORT>/metrics")
                 .validator(|v| v.to_string().parse::<u16>())
         )
+        .arg(
+            Arg::new("Scrape-Interval")
+                .short('i')
+                .long("scrape-interval")
+                .env("PROM_SCRAPE_INTERVAL")
+                .value_hint(ValueHint::Other)
+                .value_name("SCRAPE_INTERVAL")
+                .global(false)
+                .takes_value(true)
+                .use_value_delimiter(false)
+                .help("Scrape interval of the prometheus endpoint")
+                .long_help("The time interval between 2 consecutive scrapes. Default value is 10s")
+                .default_value("10")
+                .validator(|v| v.to_string().parse::<u16>())
+        )
 }
 
 #[test]
