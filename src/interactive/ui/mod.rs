@@ -39,13 +39,13 @@ where
     let scrape_interval = format!("Scraping interval: {}s", app.scrape_interval);
     let mut text = vec![Spans::from(endpoint), Spans::from(scrape_interval)];
 
-    let has_error = app
+    let error_msg_guard = app
         .metric_scraper
-        .get_has_error_lock()
-        .expect("to get has_error_lock");
-    if *has_error {
+        .get_error_msg_read_guard()
+        .expect("to get error msg guard");
+    if let Some(error_msg) = &*error_msg_guard {
         text.push(Spans::from(Span::styled(
-            format!("Prom-tui is not able to scrape the metrics endpoint provided. Please check that the endpoint provided is reachable."),
+            format!("Prom-tui scraper is failing with error: {}", error_msg),
             Style::default()
                 .fg(Color::Red)
                 .add_modifier(Modifier::BOLD | Modifier::SLOW_BLINK),

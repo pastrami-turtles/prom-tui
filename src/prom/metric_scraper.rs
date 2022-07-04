@@ -2,7 +2,7 @@ use super::{
     model::MetricHistory,
     parser::{decode_single_scrape_metric, split_metric_lines},
 };
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::{sync::{Arc, RwLock, RwLockReadGuard}, error::Error};
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::{task, time::sleep};
@@ -10,24 +10,24 @@ use tokio::{task, time::sleep};
 type MetricHistoryArc = Arc<RwLock<MetricHistory>>;
 pub struct MetricScraper {
     metrics_history: MetricHistoryArc,
-    has_error: Arc<RwLock<bool>>,
+    error_msg: Arc<RwLock<Option<String>>>,
 }
 
 impl MetricScraper {
     pub fn new(url: String, scrape_interval: u64) -> Self {
         let metrics_history = MetricHistoryArc::new(RwLock::new(MetricHistory::new()));
-        let has_error = Arc::new(RwLock::new(false));
+        let error_msg = Arc::new(RwLock::new(None));
 
         {
             let history = Arc::clone(&metrics_history);
-            let has_error = Arc::clone(&has_error);
+            let error_msg = Arc::clone(&error_msg);
             task::spawn(async move {
-                scrape_metric_endpoint(&url, &history, &has_error, scrape_interval).await;
+                scrape_metric_endpoint(&url, &history, &error_msg, scrape_interval).await;
             });
         }
         Self {
             metrics_history,
-            has_error,
+            error_msg,
         }
     }
 
@@ -37,17 +37,17 @@ impl MetricScraper {
             .map_err(|err| anyhow::anyhow!("failed to aquire lock of metrics history: {}", err))
     }
 
-    pub fn get_has_error_lock(&self) -> anyhow::Result<RwLockReadGuard<bool>> {
-        self.has_error
+    pub fn get_error_msg_read_guard(&self) -> anyhow::Result<RwLockReadGuard<Option<String>>> {
+        self.error_msg
             .read()
-            .map_err(|err| anyhow::anyhow!("failed to aquire lock of has error: {}", err))
+            .map_err(|err| anyhow::anyhow!("failed to aquire lock: {}", err))
     }
 }
 
 async fn scrape_metric_endpoint(
     url: &str,
     history: &MetricHistoryArc,
-    has_error: &Arc<RwLock<bool>>,
+    error_msg: &Arc<RwLock<Option<String>>>,
     scrape_interval: u64,
 ) {
     let mut last_tick = Instant::now();
@@ -62,10 +62,10 @@ async fn scrape_metric_endpoint(
             match splitted_metrics_result {
                 Ok(splitted_metrics) => {
                     update_history_with_new_scrape(history, splitted_metrics);
-                    update_error_status(has_error, false);
+                    update_error_status(error_msg, None);
                 },
                 Err(err) => {
-                    update_error_status(has_error, true);
+                    update_error_status(error_msg, Some(err.to_string()));
                     log::error!(
                         "Not able to scrape the metrics endpoint: {}", err
                     );
@@ -117,11 +117,11 @@ fn update_history_with_new_scrape(history: &MetricHistoryArc, splitted_metrics: 
     }
 }
 
-fn update_error_status(has_error: &Arc<RwLock<bool>>, is_error: bool) {
-    let mut has_error_guard = has_error
+fn update_error_status(error_msg: &Arc<RwLock<Option<String>>>, error_message: Option<String>) {
+    let mut has_error_guard = error_msg
         .write()
         .expect("to acquire write lock of has_error");
-    *has_error_guard = is_error;
+    *has_error_guard = error_message;
 }
 
 fn get_timestamp_unix_epoch() -> u64 {
