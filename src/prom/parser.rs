@@ -3,6 +3,7 @@ use regex::Regex;
 use super::model::SingleScrapeMetric;
 use super::Sample;
 use super::SingleValueSample;
+use log::{error, info};
 use std::collections::HashMap;
 
 pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> SingleScrapeMetric {
@@ -131,10 +132,24 @@ pub fn extract_labels_with_rgx(line: &str) -> Option<String> {
 }
 
 pub fn decode_labels(labels: &str) -> HashMap<String, String> {
-    let parts: Vec<String> = labels.split(",").map(|s| s.to_string()).collect();
+    let parts: Vec<String> = labels
+        .split(",")
+        .map(|s| s.to_string())
+        .filter(|s| s.len() > 0)
+        .collect();
     let mut labels = HashMap::new();
     for label in parts {
-        let key_value: Vec<String> = label.split("=").map(|s| s.to_string()).collect();
+        let split = label.split("=").collect_vec();
+        if split.len() < 2 {
+            error!("failed to split this value: {:?}", split);
+            continue;
+        }
+
+        let key_value: Vec<String> = split
+            .iter()
+            .map(|s| s.to_string())
+            .filter(|s| s.len() > 0)
+            .collect();
         let value = key_value[1].clone().replace("\"", "");
         labels.insert(key_value[0].clone(), value);
     }
