@@ -32,6 +32,36 @@ pub fn build() -> Command<'static> {
                 .long_help("The port number used in the default prometheus endpoint. Example: http://localhost:<PORT>/metrics")
                 .validator(|v| v.to_string().parse::<u16>())
         )
+        .arg(
+            Arg::new("Scrape-Interval")
+                .short('i')
+                .long("scrape-interval")
+                .env("PROM_SCRAPE_INTERVAL")
+                .value_hint(ValueHint::Other)
+                .value_name("SCRAPE_INTERVAL")
+                .global(false)
+                .takes_value(true)
+                .use_value_delimiter(false)
+                .help("Scrape interval of the prometheus endpoint")
+                .long_help("The time interval between 2 consecutive scrapes. Default value is 10s")
+                .default_value("10")
+                .validator(|v| v.to_string().parse::<u16>())
+        )
+        .arg(
+            Arg::new("Logging")
+                .short('l')
+                .long("logging")
+                .value_name("LOG_LEVEL")
+                .global(false)
+                .takes_value(true)
+                .use_value_delimiter(false)
+                .help("Set the logging level")
+                .long_help("Set the logging level to one of these values: DEBUG,ERROR,WARN,INFO")
+                .validator(|v| match v {
+                    "info" | "INFO" | "debug" | "DEBUG" | "error" | "ERROR" | "warn" | "WARN" => Ok(()),
+                    _ => Err("the value should match the following: DEBUG,ERROR,WARN,INFO")
+                })
+        )
 }
 
 #[test]

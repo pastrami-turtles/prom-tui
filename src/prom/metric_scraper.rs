@@ -10,20 +10,24 @@ use tokio::{task, time::sleep};
 type MetricHistoryArc = Arc<RwLock<MetricHistory>>;
 pub struct MetricScraper {
     metrics_history: MetricHistoryArc,
+    has_error: Arc<RwLock<bool>>,
 }
 
 impl MetricScraper {
     pub fn new(url: String, scrape_interval: u64) -> Self {
-        let metric_history = MetricHistoryArc::new(RwLock::new(MetricHistory::new()));
+        let metrics_history = MetricHistoryArc::new(RwLock::new(MetricHistory::new()));
+        let has_error = Arc::new(RwLock::new(false));
 
         {
-            let history = Arc::clone(&metric_history);
+            let history = Arc::clone(&metrics_history);
+            let has_error = Arc::clone(&has_error);
             task::spawn(async move {
-                scrape_metric_endpoint(&url, &history, scrape_interval).await;
+                scrape_metric_endpoint(&url, &history, &has_error, scrape_interval).await;
             });
         }
         Self {
-            metrics_history: metric_history,
+            metrics_history,
+            has_error,
         }
     }
 
@@ -32,9 +36,20 @@ impl MetricScraper {
             .read()
             .map_err(|err| anyhow::anyhow!("failed to aquire lock of metrics history: {}", err))
     }
+
+    pub fn get_has_error_lock(&self) -> anyhow::Result<RwLockReadGuard<bool>> {
+        self.has_error
+            .read()
+            .map_err(|err| anyhow::anyhow!("failed to aquire lock of has error: {}", err))
+    }
 }
 
-async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_interval: u64) {
+async fn scrape_metric_endpoint(
+    url: &str,
+    history: &MetricHistoryArc,
+    has_error: &Arc<RwLock<bool>>,
+    scrape_interval: u64,
+) {
     let mut last_tick = Instant::now();
     let tick_rate = Duration::from_millis(scrape_interval * 1000);
     let mut must_scrape = true;
@@ -42,8 +57,20 @@ async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_in
     loop {
         // scrape and update history
         if must_scrape {
-            let splitted_metrics = get_splitted_metrics_from_endpoint(&url).await;
-            update_history_with_new_scrape(history, splitted_metrics);
+            let splitted_metrics_result = get_splitted_metrics_from_endpoint(&url).await;
+
+            match splitted_metrics_result {
+                Ok(splitted_metrics) => {
+                    update_history_with_new_scrape(history, splitted_metrics);
+                    update_error_status(has_error, false);
+                },
+                Err(err) => {
+                    update_error_status(has_error, true);
+                    log::error!(
+                        "Not able to scrape the metrics endpoint: {}", err
+                    );
+                }
+            }
             // set must_scrape to false to avoid scraping again until the next tick
             must_scrape = false;
             // after scraping, sleep for the remaining time of the tick
@@ -64,7 +91,9 @@ async fn scrape_metric_endpoint(url: &str, history: &MetricHistoryArc, scrape_in
 }
 
 fn update_history_with_new_scrape(history: &MetricHistoryArc, splitted_metrics: Vec<Vec<String>>) {
-    let mut history_guard = history.write().unwrap();
+    let mut history_guard = history
+        .write()
+        .expect("to acquire write lock of metrics history");
     let timestamp = get_timestamp_unix_epoch();
     for part in splitted_metrics {
         let single_scrape_metric = decode_single_scrape_metric(part, timestamp);
@@ -88,6 +117,13 @@ fn update_history_with_new_scrape(history: &MetricHistoryArc, splitted_metrics: 
     }
 }
 
+fn update_error_status(has_error: &Arc<RwLock<bool>>, is_error: bool) {
+    let mut has_error_guard = has_error
+        .write()
+        .expect("to acquire write lock of has_error");
+    *has_error_guard = is_error;
+}
+
 fn get_timestamp_unix_epoch() -> u64 {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -97,18 +133,13 @@ fn get_timestamp_unix_epoch() -> u64 {
 }
 
 // TODO handle error when scraping endpoint is down and make app surviving connection issues.
-async fn get_splitted_metrics_from_endpoint(url: &str) -> Vec<Vec<String>> {
-    let resp = reqwest::get(url)
-        .await
-        .expect("a ok response from scraping endpoint!")
-        .text()
-        .await
-        .expect("a text response from scraping endpoint!");
+async fn get_splitted_metrics_from_endpoint(url: &str) -> anyhow::Result<Vec<Vec<String>>> {
+    let resp = reqwest::get(url).await?.text().await?;
     let lines = resp
         .split("\n")
         .map(|s| String::from(s))
         .collect::<Vec<String>>();
-    return split_metric_lines(lines);
+    return Ok(split_metric_lines(lines));
 }
 
 #[cfg(test)]

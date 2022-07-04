@@ -3,6 +3,7 @@ use regex::Regex;
 use super::model::SingleScrapeMetric;
 use super::Sample;
 use super::SingleValueSample;
+use log::{error, info};
 use std::collections::HashMap;
 
 pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> SingleScrapeMetric {
@@ -123,7 +124,7 @@ pub fn extract_labels(line: &String) -> Option<String> {
 
 #[allow(dead_code)]
 pub fn extract_labels_with_rgx(line: &str) -> Option<String> {
-    let regex = Regex::new(r"\{(.*?)\}").unwrap();
+    let regex = Regex::new(r"\{(.*?)}").unwrap();
     if let Some(caps) = regex.captures_iter(line).next() {
         return Some(caps[1].to_string());
     }
@@ -131,10 +132,24 @@ pub fn extract_labels_with_rgx(line: &str) -> Option<String> {
 }
 
 pub fn decode_labels(labels: &str) -> HashMap<String, String> {
-    let parts: Vec<String> = labels.split(",").map(|s| s.to_string()).collect();
+    let parts: Vec<String> = labels
+        .split(",")
+        .map(|s| s.to_string())
+        .filter(|s| s.len() > 0)
+        .collect();
     let mut labels = HashMap::new();
     for label in parts {
-        let key_value: Vec<String> = label.split("=").map(|s| s.to_string()).collect();
+        let split: Vec<&str> = label.split("=").collect();
+        if split.len() != 2 {
+            error!("failed to split this value: {:?}", split);
+            continue;
+        }
+
+        let key_value: Vec<String> = split
+            .iter()
+            .map(|s| s.to_string())
+            .filter(|s| s.len() > 0)
+            .collect();
         let value = key_value[1].clone().replace("\"", "");
         labels.insert(key_value[0].clone(), value);
     }
@@ -208,32 +223,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse() {
-        let lines = generate_metric_lines();
-        let result = self::parse(lines, 1654892036);
-        assert_eq!(result.len(), 4);
-        assert_eq!(result[0].details.name, String::from("metric_1"));
-        assert_eq!(
-            result[0].details.docstring,
-            String::from("Description of the metric")
-        );
-        assert_eq!(result[0].time_series.contains_key("shard=\"0\""), true);
-        assert_eq!(result[1].details.name, String::from("metric_2"));
-        assert_eq!(result[1].details.docstring, String::from("Description"));
-        let samples = &result[1]
-            .time_series
-            .get("shard=\"0\",label1=\"test1\"")
-            .unwrap()
-            .samples[0];
-        match samples {
-            Sample::CounterSample(sample) => {
-                assert_eq!(sample.value, 5.0)
-            }
-            _ => panic!("Wrong sample type, expected CounterSample"),
-        }
-    }
-
-    #[test]
     fn test_extract_labels() {
         let mut lines = Vec::new();
         lines.push(String::from("metric_1{shard=\"0\"} 10.000007"));
@@ -274,14 +263,14 @@ mod tests {
         lines.push(String::from("metric_1{shard=\"0\"} 10.000007"));
         // insert to check if empty lines can be handled
         lines.push(String::from(""));
-        let metric = decode_metric(
+        let metric = decode_single_scrape_metric(
             lines,
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
         );
-        assert_eq!(metric.details.name, "metric_1");
+        assert_eq!(metric.name, "metric_1");
     }
 
     #[test]

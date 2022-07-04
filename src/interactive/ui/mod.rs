@@ -39,14 +39,18 @@ where
     let scrape_interval = format!("Scraping interval: {}s", app.scrape_interval);
     let mut text = vec![Spans::from(endpoint), Spans::from(scrape_interval)];
 
-    // if let Some(err) = app.mqtt_thread.has_connection_err().unwrap() {
-    //     text.push(Spans::from(Span::styled(
-    //         format!("MQTT Connection Error: {}", err),
-    //         Style::default()
-    //             .fg(Color::Red)
-    //             .add_modifier(Modifier::BOLD | Modifier::SLOW_BLINK),
-    //     )));
-    // }
+    let has_error = app
+        .metric_scraper
+        .get_has_error_lock()
+        .expect("to get has_error_lock");
+    if *has_error {
+        text.push(Spans::from(Span::styled(
+            format!("Prom-tui is not able to scrape the metrics endpoint provided. Please check that the endpoint provided is reachable."),
+            Style::default()
+                .fg(Color::Red)
+                .add_modifier(Modifier::BOLD | Modifier::SLOW_BLINK),
+        )));
+    }
 
     if let Some(selected_metric) = &app.selected_metric {
         text.push(Spans::from(format!("Selected metric: {}", selected_metric)));
