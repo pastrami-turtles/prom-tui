@@ -124,7 +124,7 @@ pub fn extract_labels(line: &String) -> Option<String> {
 
 #[allow(dead_code)]
 pub fn extract_labels_with_rgx(line: &str) -> Option<String> {
-    let regex = Regex::new(r"\{(.*?)\}").unwrap();
+    let regex = Regex::new(r"\{(.*?)}").unwrap();
     if let Some(caps) = regex.captures_iter(line).next() {
         return Some(caps[1].to_string());
     }
@@ -139,7 +139,7 @@ pub fn decode_labels(labels: &str) -> HashMap<String, String> {
         .collect();
     let mut labels = HashMap::new();
     for label in parts {
-        let split = label.split("=").collect_vec();
+        let split: Vec<&str> = label.split("=").collect();
         if split.len() != 2 {
             error!("failed to split this value: {:?}", split);
             continue;
