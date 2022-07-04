@@ -58,14 +58,18 @@ async fn scrape_metric_endpoint(
         // scrape and update history
         if must_scrape {
             let splitted_metrics_result = get_splitted_metrics_from_endpoint(&url).await;
-            if let Ok(splitted_metrics) = splitted_metrics_result {
-                update_history_with_new_scrape(history, splitted_metrics);
-                update_error_status(has_error, false);
-            } else {
-                update_error_status(has_error, true);
-                log::error!(
-                    "Not able to scrape the metrics endpoint. Trying again at the next tick."
-                );
+
+            match splitted_metrics_result {
+                Ok(splitted_metrics) => {
+                    update_history_with_new_scrape(history, splitted_metrics);
+                    update_error_status(has_error, false);
+                },
+                Err(err) => {
+                    update_error_status(has_error, true);
+                    log::error!(
+                        "Not able to scrape the metrics endpoint: {}", err
+                    );
+                }
             }
             // set must_scrape to false to avoid scraping again until the next tick
             must_scrape = false;
