@@ -97,15 +97,17 @@ where
     } else {
         area
     };
-
-    draw_list(
-        f,
-        metric_headers_area,
-        &metric_headers,
-        matches!(app.focus, ElementInFocus::MetricHeaders),
-        &mut app.metric_list_state,
-        "Metrics",
-    );
+    if let Some(selected_metric) = &app.selected_metric {
+        draw_list( 
+            f,
+            metric_headers_area,
+            &metric_headers,
+            matches!(app.focus, ElementInFocus::MetricHeaders),
+            selected_metric,
+            &mut app.metric_list_state,
+            "Metrics",
+        );
+    }
     Ok(())
 }
 
@@ -114,11 +116,17 @@ fn draw_list<B>(
     area: Rect,
     items: &[String],
     has_focus: bool,
+    selected_item: &str,
     state: &mut ListState,
     title_prefix: &str,
 ) where
     B: Backend,
 {
+    let current_index = items.iter().position(|a| *a == selected_item).expect("index to be found"); 
+    let state_index = state.selected().expect("state index to be present");
+    if state_index != current_index {
+        state.select(Some(current_index))
+    }
     let title = format!("{} ({})", title_prefix, items.len());
     let list_block = Block::default()
         .borders(Borders::ALL)
@@ -159,15 +167,16 @@ fn draw_details<B>(
     let chunks = Layout::default()
         .constraints([Constraint::Percentage(25), Constraint::Min(16)].as_ref())
         .split(chunk_right);
-    draw_list(
-        f,
-        chunks[0],
-        &time_series_keys,
-        is_in_focus,
-        labels_state,
-        "Labels",
-    );
     if let Some(selected_label) = selected_label_option {
+        draw_list(
+            f,
+            chunks[0],
+            &time_series_keys,
+            is_in_focus,
+            selected_label,
+            labels_state,
+            "Labels",
+        );
         history::draw(f, chunks[1], chunk_left, metric, selected_label);
     }
 }
