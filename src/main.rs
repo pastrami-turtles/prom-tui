@@ -1,3 +1,4 @@
+use crate::logging::app_config;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode},
     execute,
@@ -17,6 +18,7 @@ use tui_tree_widget::TreeItem;
 
 mod app;
 mod cli;
+mod logging;
 mod model;
 mod prom;
 mod ui;
@@ -28,13 +30,13 @@ enum Event<I> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // initialize the logger
-    //TODO in the future, this should be not provided by the user but embedded in the binary
-    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-    log::info!("Starting the application!");
-
     // read cli arguments
     let matches = cli::build().get_matches();
+
+    // initialize the logger
+    log4rs::init_config(app_config("log.out", matches.value_of("Logging"))).unwrap();
+    log::info!("Starting the application!");
+
     let regex = Regex::new(":(\\d{2,5})/").unwrap();
     let port_option = matches.value_of("Port");
     let endpoint_option = matches.value_of("Endpoint");
