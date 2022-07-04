@@ -140,7 +140,7 @@ pub fn decode_labels(labels: &str) -> HashMap<String, String> {
     let mut labels = HashMap::new();
     for label in parts {
         let split = label.split("=").collect_vec();
-        if split.len() < 2 {
+        if split.len() != 2 {
             error!("failed to split this value: {:?}", split);
             continue;
         }
