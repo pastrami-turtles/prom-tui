@@ -92,7 +92,7 @@ pub async fn show(endpoint: String, scrape_interval: u64) -> Result<(), Box<dyn 
                 }
                 KeyCode::Down => app.on_down()?,
                 KeyCode::Up => app.on_up()?,
-                KeyCode::Tab | KeyCode::BackTab => app.on_tab()?,
+                KeyCode::Tab | KeyCode::BackTab | KeyCode::Right | KeyCode::Left => app.on_tab()?,
                 _ => {} //app.dispatch_input(event.code),
             },
             Some(Event::Tick) => {}
