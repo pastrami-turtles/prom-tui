@@ -1,17 +1,20 @@
+use crate::logging::app_config;
 use regex::Regex;
 
 mod cli;
 mod interactive;
+mod logging;
 mod prom;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    //TODO in the future, this should be not provided by the user but embedded in the binary
-    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+    // read cli arguments
+    let matches = cli::build().get_matches();
+
+    // initialize the logger
+    log4rs::init_config(app_config("log.out", matches.value_of("Logging"))).unwrap();
     log::info!("Starting the application!");
 
-    log::info!("Reading cli inputs");
-    let matches = cli::build().get_matches();
     let regex = Regex::new(":(\\d{2,5})/").unwrap();
     let port_option = matches.value_of("Port");
     let endpoint_option = matches.value_of("Endpoint");
