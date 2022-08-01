@@ -84,23 +84,25 @@ pub struct TimeSeries {
     pub samples: Vec<Sample>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Sample {
     GaugeSample(SingleValueSample),
     CounterSample(SingleValueSample),
-    HistogramSample(HistogramSample),
+    HistogramSample(HistogramValueSample),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SingleValueSample {
     pub timestamp: u64,
     pub value: f64,
 }
 
-#[derive(Clone)]
-pub struct HistogramSample {
-    pub timestamp: u32,
-    pub values: Vec<f64>,
+#[derive(Clone, Debug)]
+pub struct HistogramValueSample {
+    pub timestamp: u64,
+    pub bucket_values: HashMap<String, f64>,
+    pub sum: f64,
+    pub count: u64,
 }
 
 fn add_time_series_into_metric(

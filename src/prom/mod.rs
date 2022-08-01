@@ -1,5 +1,5 @@
 mod model;
-pub use self::model::HistogramSample;
+pub use self::model::HistogramValueSample;
 pub use self::model::Metric;
 pub use self::model::MetricDetails;
 pub use self::model::MetricHistory;
