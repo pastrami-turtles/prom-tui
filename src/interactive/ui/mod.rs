@@ -128,7 +128,10 @@ fn draw_list<B>(
 {
     if let Some(selected_label) = selected_label_option {
         // if the list is updated we need to be sure that the state index is still point to the correct item
-        let current_index = items.iter().position(|a| a == selected_label).expect("index to be found");
+        let current_index = items
+            .iter()
+            .position(|a| a == selected_label)
+            .expect("index to be found");
         let state_index = state.selected().expect("state index to be present");
         if state_index != current_index {
             state.select(Some(current_index))
