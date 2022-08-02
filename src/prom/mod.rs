@@ -3,10 +3,10 @@ pub use self::model::HistogramValueSample;
 pub use self::model::Metric;
 pub use self::model::MetricDetails;
 pub use self::model::MetricHistory;
+pub use self::model::MetricType;
 pub use self::model::Sample;
 pub use self::model::SingleValueSample;
 pub use self::model::TimeSeries;
-
 pub(crate) mod parser;
 
 mod metric_scraper;

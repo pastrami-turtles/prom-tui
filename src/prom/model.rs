@@ -26,9 +26,17 @@ impl MetricHistory {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum MetricType {
+    Gauge,
+    Counter,
+    Histogram,
+}
+
 pub struct SingleScrapeMetric {
     pub name: String,
     pub docstring: String,
+    pub metric_type: MetricType,
     pub value_per_labels: HashMap<String, Sample>,
 }
 
@@ -38,6 +46,7 @@ impl SingleScrapeMetric {
             details: MetricDetails {
                 name: self.name,
                 docstring: self.docstring,
+                metric_type: self.metric_type,
             },
             time_series: HashMap::new(),
         };
@@ -60,6 +69,7 @@ pub struct Metric {
 pub struct MetricDetails {
     pub name: String,
     pub docstring: String,
+    pub metric_type: MetricType,
 }
 
 impl Metric {

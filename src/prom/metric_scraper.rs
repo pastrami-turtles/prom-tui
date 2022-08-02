@@ -5,7 +5,6 @@ use super::{
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{
-    error::Error,
     sync::{Arc, RwLock, RwLockReadGuard},
 };
 use tokio::{task, time::sleep};

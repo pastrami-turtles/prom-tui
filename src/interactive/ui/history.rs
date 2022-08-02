@@ -1,3 +1,4 @@
+use log::error;
 use tui::{
     backend::Backend,
     layout::{Constraint, Rect},
@@ -8,7 +9,7 @@ use tui::{
     Frame,
 };
 
-use crate::prom::{Metric, Sample};
+use crate::prom::{Metric, MetricType, Sample};
 use chrono::prelude::*;
 
 use super::graph_data::GraphData;
@@ -22,10 +23,15 @@ pub fn draw<B>(
 ) where
     B: Backend,
 {
-    if let Some(graph_data) = GraphData::parse(metric, selected_label) {
-        draw_graph(f, chunk_right, &graph_data);
+    match metric.details.metric_type {
+        MetricType::Histogram => {}
+        _ => {
+            if let Some(graph_data) = GraphData::parse(metric, selected_label) {
+                draw_graph(f, chunk_right, &graph_data);
+            }
+            draw_table(f, chunk_left, metric, &selected_label);
+        }
     }
-    draw_table(f, chunk_left, metric, &selected_label);
 }
 
 #[allow(clippy::cast_precision_loss)]
@@ -44,7 +50,10 @@ where
         let (timestamp, value) = match entry {
             Sample::GaugeSample(single_value) => (single_value.timestamp, single_value.value),
             Sample::CounterSample(single_value) => (single_value.timestamp, single_value.value),
-            _ => unimplemented!(),
+            _ => {
+                error!("History table is not implemented for this kind of sample.");
+                unimplemented!();
+            }
         };
         let time = Local.timestamp(timestamp as i64, 0).to_rfc2822();
         Row::new(vec![time, value.to_string()])

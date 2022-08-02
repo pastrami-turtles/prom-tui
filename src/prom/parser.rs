@@ -1,9 +1,9 @@
 use regex::Regex;
 
-use super::model::SingleScrapeMetric;
+use super::model::{MetricType, SingleScrapeMetric};
 use super::Sample;
-use super::{SingleValueSample, HistogramValueSample};
-use log::{error};
+use super::{HistogramValueSample, SingleValueSample};
+use log::error;
 use std::collections::HashMap;
 
 pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> SingleScrapeMetric {
@@ -12,6 +12,7 @@ pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> Single
     let mut single_scrape_metric = SingleScrapeMetric {
         name: name,
         docstring: docstring,
+        metric_type: MetricType::Gauge,
         value_per_labels: HashMap::new(),
     };
     match metric_type.as_str() {
@@ -40,6 +41,7 @@ pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> Single
                 let labels = extract_labels(&line);
                 let (_, key) = extract_labels_key_and_map(labels);
                 let value = extract_value(&line);
+                single_scrape_metric.metric_type = MetricType::Counter;
                 single_scrape_metric.value_per_labels.insert(
                     key,
                     Sample::CounterSample(SingleValueSample {
@@ -54,7 +56,7 @@ pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> Single
             for group_lines in splitted_lines_for_histogram.iter() {
                 let mut bucket_values = HashMap::new();
                 // retrieve buckets values
-                for line in group_lines.iter().take(group_lines.len()-2) {
+                for line in group_lines.iter().take(group_lines.len() - 2) {
                     let labels = extract_labels(&line);
                     let (labels_map, _) = extract_labels_key_and_map(labels);
                     let bucket_value = labels_map.get("le").unwrap();
@@ -62,13 +64,13 @@ pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> Single
                     bucket_values.insert(bucket_value.clone(), value);
                 }
                 // retrieve sum value
-                let sum = extract_value(&group_lines[group_lines.len()-2]);
+                let sum = extract_value(&group_lines[group_lines.len() - 2]);
                 // retrieve count value and labels
-                let count_line = group_lines[group_lines.len()-1].clone();
+                let count_line = group_lines[group_lines.len() - 1].clone();
                 let labels = extract_labels(&count_line);
                 let (_, key) = extract_labels_key_and_map(labels);
                 let count = extract_value(&count_line) as u64;
-
+                single_scrape_metric.metric_type = MetricType::Histogram;
                 single_scrape_metric.value_per_labels.insert(
                     key,
                     Sample::HistogramSample(HistogramValueSample {
@@ -121,8 +123,7 @@ pub fn further_split_metric_lines_for_histogram(lines: &[String]) -> Vec<Vec<Str
     let mut metric_lines: Vec<String> = Vec::new();
 
     for line in lines.iter().skip(2) {
-        if line.contains("_count{")
-        {
+        if line.contains("_count{") {
             metric_lines.push(line.to_string());
             metrics.push(metric_lines);
             metric_lines = Vec::new();
@@ -276,7 +277,8 @@ mod tests {
     fn test_further_split_metric_lines_for_histogram() {
         let lines = generate_metric_lines();
         let splitted_lines = split_metric_lines(lines);
-        let further_splitted_metrics_for_hist = further_split_metric_lines_for_histogram(&splitted_lines[4]);
+        let further_splitted_metrics_for_hist =
+            further_split_metric_lines_for_histogram(&splitted_lines[4]);
         assert_eq!(further_splitted_metrics_for_hist.len(), 2);
         assert_eq!(further_splitted_metrics_for_hist[0].len(), 10);
         assert_eq!(further_splitted_metrics_for_hist[1].len(), 10);
@@ -357,17 +359,37 @@ mod tests {
         let mut lines = Vec::new();
         lines.push(String::from("# HELP response_time Response Times"));
         lines.push(String::from("# TYPE response_time histogram"));
-        lines.push(String::from("response_time_bucket{env=\"production\",le=\"0.005\"} 3"));
-        lines.push(String::from("response_time_bucket{env=\"production\",le=\"0.01\"} 4"));
-        lines.push(String::from("response_time_bucket{env=\"production\",le=\"0.025\"} 13"));
-        lines.push(String::from("response_time_bucket{env=\"production\",le=\"+Inf\"} 6563"));
-        lines.push(String::from("response_time_sum{env=\"production\"} 32899.06535799631"));
+        lines.push(String::from(
+            "response_time_bucket{env=\"production\",le=\"0.005\"} 3",
+        ));
+        lines.push(String::from(
+            "response_time_bucket{env=\"production\",le=\"0.01\"} 4",
+        ));
+        lines.push(String::from(
+            "response_time_bucket{env=\"production\",le=\"0.025\"} 13",
+        ));
+        lines.push(String::from(
+            "response_time_bucket{env=\"production\",le=\"+Inf\"} 6563",
+        ));
+        lines.push(String::from(
+            "response_time_sum{env=\"production\"} 32899.06535799631",
+        ));
         lines.push(String::from("response_time_count{env=\"production\"} 6563"));
-        lines.push(String::from("response_time_bucket{env=\"testing\",le=\"0.005\"} 4"));
-        lines.push(String::from("response_time_bucket{env=\"testing\",le=\"0.01\"} 4"));
-        lines.push(String::from("response_time_bucket{env=\"testing\",le=\"0.025\"} 13"));
-        lines.push(String::from("response_time_bucket{env=\"testing\",le=\"+Inf\"} 6451"));
-        lines.push(String::from("response_time_sum{env=\"testing\"} 32157.055112958977"));
+        lines.push(String::from(
+            "response_time_bucket{env=\"testing\",le=\"0.005\"} 4",
+        ));
+        lines.push(String::from(
+            "response_time_bucket{env=\"testing\",le=\"0.01\"} 4",
+        ));
+        lines.push(String::from(
+            "response_time_bucket{env=\"testing\",le=\"0.025\"} 13",
+        ));
+        lines.push(String::from(
+            "response_time_bucket{env=\"testing\",le=\"+Inf\"} 6451",
+        ));
+        lines.push(String::from(
+            "response_time_sum{env=\"testing\"} 32157.055112958977",
+        ));
         lines.push(String::from("response_time_count{env=\"testing\"} 6451"));
         // insert to check if empty lines can be handled
         lines.push(String::from(""));
@@ -380,9 +402,19 @@ mod tests {
         );
         assert_eq!(metric.name, "response_time");
         let metric_hist_1 = metric.value_per_labels.get("env=\"production\"").unwrap();
-        let expected_1 = HashMap::from([(String::from("0.005"), 3.0), (String::from("0.01"), 4.0),(String::from("+Inf"), 6563.0), (String::from("0.025"), 13.0),]);
-        let metric_hist_2  = metric.value_per_labels.get("env=\"testing\"").unwrap();
-        let expected_2 = HashMap::from([(String::from("0.005"), 4.0), (String::from("0.01"), 4.0),(String::from("+Inf"), 6451.0), (String::from("0.025"), 13.0),]);
+        let expected_1 = HashMap::from([
+            (String::from("0.005"), 3.0),
+            (String::from("0.01"), 4.0),
+            (String::from("+Inf"), 6563.0),
+            (String::from("0.025"), 13.0),
+        ]);
+        let metric_hist_2 = metric.value_per_labels.get("env=\"testing\"").unwrap();
+        let expected_2 = HashMap::from([
+            (String::from("0.005"), 4.0),
+            (String::from("0.01"), 4.0),
+            (String::from("+Inf"), 6451.0),
+            (String::from("0.025"), 13.0),
+        ]);
         match metric_hist_1 {
             Sample::HistogramSample(hist_metric_value) => {
                 assert_eq!(hist_metric_value.bucket_values, expected_1);
