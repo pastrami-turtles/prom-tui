@@ -1,7 +1,7 @@
 use log::error;
 use tui::{
     backend::Backend,
-    layout::{Constraint, Rect},
+    layout::{Constraint, Rect, Layout},
     style::{Color, Modifier, Style},
     symbols,
     text::Span,
@@ -12,7 +12,7 @@ use tui::{
 use crate::prom::{Metric, MetricType, Sample};
 use chrono::prelude::*;
 
-use super::graph_data::GraphData;
+use super::{graph_data::GraphData, histogram_data::{self, HistogramData}};
 
 pub fn draw<B>(
     f: &mut Frame<B>,
@@ -24,7 +24,11 @@ pub fn draw<B>(
     B: Backend,
 {
     match metric.details.metric_type {
-        MetricType::Histogram => {}
+        MetricType::Histogram => {
+            if let Some(histogram_data) = HistogramData::parse(metric, selected_label) {
+                draw_histogram_table(f, chunk_left, &histogram_data);
+            }
+        }
         _ => {
             if let Some(graph_data) = GraphData::parse(metric, selected_label) {
                 draw_graph(f, chunk_right, &graph_data);
@@ -106,4 +110,56 @@ where
                 .bounds([points.y_min, points.y_max]),
         );
     f.render_widget(chart, area);
+}
+
+fn draw_histogram_table<B>(f: &mut Frame<B>, area: Rect, histogram_data: &HistogramData)
+where
+    B: Backend,
+{    let chunks = Layout::default()
+    .constraints([Constraint::Percentage(25), Constraint::Min(8)].as_ref())
+    .split(area);
+
+    // Draw histogram details
+    let title_details = format!("Histogram Details");
+
+    let row_details = [
+        Row::new(vec![histogram_data.time.to_rfc2822(), histogram_data.count.to_string(), format!("{:.2}",histogram_data.sum)])
+    ];
+
+
+    let t = Table::new(row_details)
+        .block(Block::default().borders(Borders::ALL).title(title_details))
+        .header(
+            Row::new(vec!["Time", "Count", "Sum"]).style(Style::default().add_modifier(Modifier::BOLD)),
+        )
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD))
+        .widths(&[
+            Constraint::Length(40),
+            Constraint::Length(15),
+            Constraint::Length(15),
+            Constraint::Percentage(100),
+        ]);
+    f.render_widget(t, chunks[0]);
+
+    // Draw histogram buckets details
+    let title = format!("Histogram Buckets Details");
+
+    let rows = histogram_data.data.iter().map(|entry| {
+        Row::new(vec![entry.bucket.clone(), entry.value.to_string(), format!("{:.2}", entry.percentage), format!("{:.2}", entry.distribution)])
+    });
+
+    let t = Table::new(rows)
+        .block(Block::default().borders(Borders::ALL).title(title))
+        .header(
+            Row::new(vec!["Bucket", "Count", "%", "Dist %"]).style(Style::default().add_modifier(Modifier::BOLD)),
+        )
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD))
+        .widths(&[
+            Constraint::Length(15),
+            Constraint::Length(15),
+            Constraint::Length(15),
+            Constraint::Length(15),
+            Constraint::Percentage(100),
+        ]);
+    f.render_widget(t, chunks[1]);
 }

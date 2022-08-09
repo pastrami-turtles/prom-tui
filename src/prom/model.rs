@@ -107,10 +107,22 @@ pub struct SingleValueSample {
     pub value: f64,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bucket {
+    pub name: String,
+    pub value: u64,
+}
+
+impl Bucket {
+    pub fn new(name: String, value: u64) -> Self {
+        Self { name, value }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct HistogramValueSample {
     pub timestamp: u64,
-    pub bucket_values: HashMap<String, f64>,
+    pub bucket_values: Vec<Bucket>,
     pub sum: f64,
     pub count: u64,
 }

@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use super::model::{MetricType, SingleScrapeMetric};
+use super::model::{MetricType, SingleScrapeMetric, Bucket};
 use super::Sample;
 use super::{HistogramValueSample, SingleValueSample};
 use log::error;
@@ -54,14 +54,14 @@ pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> Single
         "histogram" => {
             let splitted_lines_for_histogram = further_split_metric_lines_for_histogram(&lines);
             for group_lines in splitted_lines_for_histogram.iter() {
-                let mut bucket_values = HashMap::new();
+                let mut bucket_values = Vec::new();
                 // retrieve buckets values
                 for line in group_lines.iter().take(group_lines.len() - 2) {
                     let labels = extract_labels(&line);
                     let (labels_map, _) = extract_labels_key_and_map(labels);
                     let bucket_value = labels_map.get("le").unwrap();
                     let value = extract_value(&line);
-                    bucket_values.insert(bucket_value.clone(), value);
+                    bucket_values.push( Bucket::new(bucket_value.clone(), value as u64) );
                 }
                 // retrieve sum value
                 let sum = extract_value(&group_lines[group_lines.len() - 2]);
@@ -402,18 +402,18 @@ mod tests {
         );
         assert_eq!(metric.name, "response_time");
         let metric_hist_1 = metric.value_per_labels.get("env=\"production\"").unwrap();
-        let expected_1 = HashMap::from([
-            (String::from("0.005"), 3.0),
-            (String::from("0.01"), 4.0),
-            (String::from("+Inf"), 6563.0),
-            (String::from("0.025"), 13.0),
+        let expected_1 = Vec::from([
+            Bucket::new(String::from("0.005"), 3),
+            Bucket::new(String::from("0.01"), 4),
+            Bucket::new(String::from("0.025"), 13),
+            Bucket::new(String::from("+Inf"), 6563),
         ]);
         let metric_hist_2 = metric.value_per_labels.get("env=\"testing\"").unwrap();
-        let expected_2 = HashMap::from([
-            (String::from("0.005"), 4.0),
-            (String::from("0.01"), 4.0),
-            (String::from("+Inf"), 6451.0),
-            (String::from("0.025"), 13.0),
+        let expected_2 = Vec::from([
+            Bucket::new(String::from("0.005"), 4),
+            Bucket::new(String::from("0.01"), 4),
+            Bucket::new(String::from("0.025"), 13),
+            Bucket::new(String::from("+Inf"), 6451),
         ]);
         match metric_hist_1 {
             Sample::HistogramSample(hist_metric_value) => {
