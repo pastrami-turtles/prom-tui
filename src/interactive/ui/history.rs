@@ -1,18 +1,18 @@
 use log::error;
 use tui::{
     backend::Backend,
-    layout::{Constraint, Rect, Layout},
+    layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     symbols,
     text::Span,
-    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Row, Table, TableState, BarChart},
+    widgets::{Axis, BarChart, Block, Borders, Chart, Dataset, GraphType, Row, Table, TableState},
     Frame,
 };
 
 use crate::prom::{Metric, MetricType, Sample};
 use chrono::prelude::*;
 
-use super::{graph_data::GraphData, histogram_data::{HistogramData}};
+use super::{graph_data::GraphData, histogram_data::HistogramData};
 
 pub fn draw<B>(
     f: &mut Frame<B>,
@@ -105,8 +105,8 @@ where
         .y_axis(
             Axis::default()
                 .labels(vec![
-                    Span::raw(format!("{:+.4e}",points.y_min)),
-                    Span::raw(format!("{:+.4e}",points.y_max)),
+                    Span::raw(format!("{:+.4e}", points.y_min)),
+                    Span::raw(format!("{:+.4e}", points.y_max)),
                 ])
                 .bounds([points.y_min, points.y_max]),
         );
@@ -116,22 +116,25 @@ where
 fn draw_histogram_table<B>(f: &mut Frame<B>, area: Rect, histogram_data: &HistogramData)
 where
     B: Backend,
-{    let chunks = Layout::default()
-    .constraints([Constraint::Percentage(25), Constraint::Min(8)].as_ref())
-    .split(area);
+{
+    let chunks = Layout::default()
+        .constraints([Constraint::Percentage(25), Constraint::Min(8)].as_ref())
+        .split(area);
 
     // Draw histogram details
     let title_details = format!("Histogram Details");
 
-    let row_details = [
-        Row::new(vec![histogram_data.time.to_rfc2822(), histogram_data.count.to_string(), format!("{:.2}",histogram_data.sum)])
-    ];
-
+    let row_details = [Row::new(vec![
+        histogram_data.time.to_rfc2822(),
+        histogram_data.count.to_string(),
+        format!("{:.2}", histogram_data.sum),
+    ])];
 
     let t = Table::new(row_details)
         .block(Block::default().borders(Borders::ALL).title(title_details))
         .header(
-            Row::new(vec!["Time", "Count", "Sum"]).style(Style::default().add_modifier(Modifier::BOLD)),
+            Row::new(vec!["Time", "Count", "Sum"])
+                .style(Style::default().add_modifier(Modifier::BOLD)),
         )
         .highlight_style(Style::default().add_modifier(Modifier::BOLD))
         .widths(&[
@@ -146,13 +149,20 @@ where
     let title = format!("Histogram Buckets Details");
 
     let rows = histogram_data.data.iter().map(|entry| {
-        Row::new(vec![entry.get_bucket().clone(), entry.get_value().to_string(), format!("{:.2}", entry.get_percentage()), entry.get_inc_per_bucket().to_string(), format!("{:.2}", entry.get_inc_per_bucket_percentage())])
+        Row::new(vec![
+            entry.get_bucket().clone(),
+            entry.get_value().to_string(),
+            format!("{:.2}", entry.get_percentage()),
+            entry.get_inc_per_bucket().to_string(),
+            format!("{:.2}", entry.get_inc_per_bucket_percentage()),
+        ])
     });
 
     let t = Table::new(rows)
         .block(Block::default().borders(Borders::ALL).title(title))
         .header(
-            Row::new(vec!["Bucket", "Count", "Count %", "Inc", "Inc %"]).style(Style::default().add_modifier(Modifier::BOLD)),
+            Row::new(vec!["Bucket", "Count", "Count %", "Inc", "Inc %"])
+                .style(Style::default().add_modifier(Modifier::BOLD)),
         )
         .highlight_style(Style::default().add_modifier(Modifier::BOLD))
         .widths(&[
@@ -169,8 +179,17 @@ fn draw_histogram<B>(f: &mut Frame<B>, area: Rect, histogram_data: &HistogramDat
 where
     B: Backend,
 {
-    let data: Vec<(&str, u64)>= histogram_data.data.iter().map(|bucket_value|  (bucket_value.get_bucket().as_str(), bucket_value.get_inc_per_bucket())).collect();
-    let bar_width = area.width/(data.len()+1) as u16;
+    let data: Vec<(&str, u64)> = histogram_data
+        .data
+        .iter()
+        .map(|bucket_value| {
+            (
+                bucket_value.get_bucket().as_str(),
+                bucket_value.get_inc_per_bucket(),
+            )
+        })
+        .collect();
+    let bar_width = area.width / (data.len() + 1) as u16;
     let t = BarChart::default()
         .block(Block::default().title("Histogram").borders(Borders::ALL))
         .data(&data)

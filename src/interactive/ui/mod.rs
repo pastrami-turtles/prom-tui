@@ -9,8 +9,8 @@ use tui::Frame;
 use crate::interactive::app::{App, ElementInFocus};
 use crate::prom::Metric;
 
-mod histogram_data;
 mod graph_data;
+mod histogram_data;
 mod history;
 mod search;
 mod style;

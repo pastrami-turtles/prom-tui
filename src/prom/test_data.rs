@@ -70,7 +70,9 @@ pub fn generate_metric_lines() -> Vec<String> {
         "response_time_sum{env=\"testing\"} 32157.055112958977",
     ));
     lines.push(String::from("response_time_count{env=\"testing\"} 6451"));
-    lines.push(String::from("# HELP response_time_no_labels Response Times"));
+    lines.push(String::from(
+        "# HELP response_time_no_labels Response Times",
+    ));
     lines.push(String::from("# TYPE response_time_no_labels  histogram"));
     lines.push(String::from(
         "response_time_no_labels_bucket{le=\"0.005\"} 3",

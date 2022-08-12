@@ -2,11 +2,9 @@ use super::{
     model::MetricHistory,
     parser::{decode_single_scrape_metric, split_metric_lines},
 };
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{
-    sync::{Arc, RwLock, RwLockReadGuard},
-};
 use tokio::{task, time::sleep};
 
 type MetricHistoryArc = Arc<RwLock<MetricHistory>>;

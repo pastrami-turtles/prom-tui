@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use super::model::{MetricType, SingleScrapeMetric, Bucket};
+use super::model::{Bucket, MetricType, SingleScrapeMetric};
 use super::Sample;
 use super::{HistogramValueSample, SingleValueSample};
 use log::error;
@@ -62,7 +62,7 @@ pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> Single
                     let (labels_map, _) = extract_labels_key_and_map(labels);
                     let bucket_value = labels_map.get("le").unwrap();
                     let value = extract_value(&line);
-                    bucket_values.push( Bucket::new(bucket_value.clone(), value as u64) );
+                    bucket_values.push(Bucket::new(bucket_value.clone(), value as u64));
                 }
                 // retrieve sum value
                 let sum = extract_value(&group_lines[group_lines.len() - 2]);
@@ -284,7 +284,8 @@ mod tests {
         assert_eq!(further_splitted_metrics_for_hist.len(), 2);
         assert_eq!(further_splitted_metrics_for_hist[0].len(), 10);
         assert_eq!(further_splitted_metrics_for_hist[1].len(), 10);
-        let further_splitted_metrics_for_hist = further_split_metric_lines_for_histogram(&splitted_lines[5]);
+        let further_splitted_metrics_for_hist =
+            further_split_metric_lines_for_histogram(&splitted_lines[5]);
         assert_eq!(further_splitted_metrics_for_hist.len(), 1);
         assert_eq!(further_splitted_metrics_for_hist[0].len(), 10);
     }
@@ -443,21 +444,11 @@ mod tests {
         let mut lines = Vec::new();
         lines.push(String::from("# HELP response_time Response Times"));
         lines.push(String::from("# TYPE response_time histogram"));
-        lines.push(String::from(
-            "response_time_bucket{le=\"0.005\"} 3",
-        ));
-        lines.push(String::from(
-            "response_time_bucket{le=\"0.01\"} 4",
-        ));
-        lines.push(String::from(
-            "response_time_bucket{le=\"0.025\"} 13",
-        ));
-        lines.push(String::from(
-            "response_time_bucket{le=\"+Inf\"} 6563",
-        ));
-        lines.push(String::from(
-            "response_time_sum 32899.06535799631",
-        ));
+        lines.push(String::from("response_time_bucket{le=\"0.005\"} 3"));
+        lines.push(String::from("response_time_bucket{le=\"0.01\"} 4"));
+        lines.push(String::from("response_time_bucket{le=\"0.025\"} 13"));
+        lines.push(String::from("response_time_bucket{le=\"+Inf\"} 6563"));
+        lines.push(String::from("response_time_sum 32899.06535799631"));
         lines.push(String::from("response_time_count 6563"));
         // insert to check if empty lines can be handled
         lines.push(String::from(""));
@@ -469,7 +460,10 @@ mod tests {
                 .as_secs(),
         );
         assert_eq!(metric.name, "response_time");
-        let metric_hist_1 = metric.value_per_labels.get("single-value-with-no-labels").unwrap();
+        let metric_hist_1 = metric
+            .value_per_labels
+            .get("single-value-with-no-labels")
+            .unwrap();
         let expected_1 = Vec::from([
             Bucket::new(String::from("0.005"), 3),
             Bucket::new(String::from("0.01"), 4),
