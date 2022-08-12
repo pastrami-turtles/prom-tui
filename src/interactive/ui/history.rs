@@ -12,7 +12,7 @@ use tui::{
 use crate::prom::{Metric, MetricType, Sample};
 use chrono::prelude::*;
 
-use super::{graph_data::GraphData, histogram_data::{self, HistogramData}};
+use super::{graph_data::GraphData, histogram_data::{HistogramData}};
 
 pub fn draw<B>(
     f: &mut Frame<B>,

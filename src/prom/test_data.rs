@@ -70,5 +70,35 @@ pub fn generate_metric_lines() -> Vec<String> {
         "response_time_sum{env=\"testing\"} 32157.055112958977",
     ));
     lines.push(String::from("response_time_count{env=\"testing\"} 6451"));
+    lines.push(String::from("# HELP response_time_no_labels Response Times"));
+    lines.push(String::from("# TYPE response_time_no_labels  histogram"));
+    lines.push(String::from(
+        "response_time_no_labels_bucket{le=\"0.005\"} 3",
+    ));
+    lines.push(String::from(
+        "response_time_no_labels_bucket{le=\"0.01\"} 4",
+    ));
+    lines.push(String::from(
+        "response_time_no_labels_bucket{le=\"0.025\"} 13",
+    ));
+    lines.push(String::from(
+        "response_time_no_labels_bucket{le=\"0.05\"} 25",
+    ));
+    lines.push(String::from(
+        "response_time_no_labels_bucket{le=\"0.1\"} 57",
+    ));
+    lines.push(String::from(
+        "response_time_no_labels_bucket{le=\"0.25\"} 148",
+    ));
+    lines.push(String::from(
+        "response_time_no_labels_bucket{le=\"0.5\"} 319",
+    ));
+    lines.push(String::from(
+        "response_time_no_labels_bucket{le=\"+Inf\"} 6563",
+    ));
+    lines.push(String::from(
+        "response_time_no_labels_sum 32899.06535799631",
+    ));
+    lines.push(String::from("response_time_count 6451"));
     return lines;
 }
