@@ -5,7 +5,7 @@ use tui::{
     style::{Color, Modifier, Style},
     symbols,
     text::Span,
-    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Row, Table, TableState},
+    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Row, Table, TableState, BarChart},
     Frame,
 };
 
@@ -27,6 +27,7 @@ pub fn draw<B>(
         MetricType::Histogram => {
             if let Some(histogram_data) = HistogramData::parse(metric, selected_label) {
                 draw_histogram_table(f, chunk_left, &histogram_data);
+                draw_histogram(f, chunk_right, &histogram_data);
             }
         }
         _ => {
@@ -60,7 +61,7 @@ where
             }
         };
         let time = Local.timestamp(timestamp as i64, 0).to_rfc2822();
-        Row::new(vec![time, value.to_string()])
+        Row::new(vec![time, format!("{:+.4e}", value)])
     });
 
     let t = Table::new(rows)
@@ -104,8 +105,8 @@ where
         .y_axis(
             Axis::default()
                 .labels(vec![
-                    Span::raw(points.y_min.to_string()),
-                    Span::raw(points.y_max.to_string()),
+                    Span::raw(format!("{:+.4e}",points.y_min)),
+                    Span::raw(format!("{:+.4e}",points.y_max)),
                 ])
                 .bounds([points.y_min, points.y_max]),
         );
@@ -145,13 +146,13 @@ where
     let title = format!("Histogram Buckets Details");
 
     let rows = histogram_data.data.iter().map(|entry| {
-        Row::new(vec![entry.bucket.clone(), entry.value.to_string(), format!("{:.2}", entry.percentage), format!("{:.2}", entry.distribution)])
+        Row::new(vec![entry.get_bucket().clone(), entry.get_value().to_string(), format!("{:.2}", entry.get_percentage()), entry.get_inc_per_bucket().to_string(), format!("{:.2}", entry.get_inc_per_bucket_percentage())])
     });
 
     let t = Table::new(rows)
         .block(Block::default().borders(Borders::ALL).title(title))
         .header(
-            Row::new(vec!["Bucket", "Count", "%", "Dist %"]).style(Style::default().add_modifier(Modifier::BOLD)),
+            Row::new(vec!["Bucket", "Count", "Count %", "Inc", "Inc %"]).style(Style::default().add_modifier(Modifier::BOLD)),
         )
         .highlight_style(Style::default().add_modifier(Modifier::BOLD))
         .widths(&[
@@ -162,4 +163,19 @@ where
             Constraint::Percentage(100),
         ]);
     f.render_widget(t, chunks[1]);
+}
+
+fn draw_histogram<B>(f: &mut Frame<B>, area: Rect, histogram_data: &HistogramData)
+where
+    B: Backend,
+{
+    let data: Vec<(&str, u64)>= histogram_data.data.iter().map(|bucket_value|  (bucket_value.get_bucket().as_str(), bucket_value.get_inc_per_bucket())).collect();
+    let bar_width = area.width/(data.len()+1) as u16;
+    let t = BarChart::default()
+        .block(Block::default().title("Histogram").borders(Borders::ALL))
+        .data(&data)
+        .bar_width(bar_width)
+        .bar_style(Style::default().fg(Color::LightGreen))
+        .value_style(Style::default().fg(Color::Black).bg(Color::LightGreen));
+    f.render_widget(t, area);
 }

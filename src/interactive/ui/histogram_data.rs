@@ -3,20 +3,41 @@ use chrono::{DateTime, Local, TimeZone};
 use crate::prom::{Metric, Sample};
 
 pub struct BucketData {
-  pub bucket: String,
-  pub value: f64,
-  pub percentage: f64,
-  pub distribution: f64,
+  bucket: String,
+  value: u64,
+  percentage: f64,
+  inc_per_bucket: u64,
+  inc_per_bucket_percentage: f64,
 }
 
 impl BucketData {
-  pub fn new(bucket: String, value: f64, percentage: f64, distribution: f64) -> Self {
-    Self { bucket, value, percentage, distribution}
+  pub fn new(bucket: String, value: u64, percentage: f64,inc_per_bucket: u64, inc_per_bucket_percentage: f64) -> Self {
+    Self { bucket, value, percentage, inc_per_bucket, inc_per_bucket_percentage }
+  }
+
+  pub fn get_bucket(&self) -> &String {
+    &self.bucket
+  }
+
+  pub fn get_value(&self) -> u64 {
+    self.value
+  }
+
+  pub fn get_percentage(&self) -> f64 {
+    self.percentage
+  }
+
+  pub fn get_inc_per_bucket(&self) -> u64 {
+    self.inc_per_bucket
+  }
+
+  pub fn get_inc_per_bucket_percentage(&self) -> f64 {
+    self.inc_per_bucket_percentage
   }
 }
 
 pub struct HistogramData {
-  pub data: Vec <BucketData>,
+  pub data: Vec<BucketData>,
   pub time: DateTime<Local>,
   pub count: u64,
   pub sum: f64
@@ -41,16 +62,15 @@ impl HistogramData {
             count = histogram.count;
             sum = histogram.sum;
             for (index, bucket) in histogram.bucket_values.iter().enumerate() {
-                let dist;
+                let inc_per_bucket;
                 if index == 0 {
-                    dist = (bucket.value as f64 / histogram.count as f64) * 100.0;
+                    inc_per_bucket = bucket.value;
                 } else {
-                    dist = (bucket.value as f64 - histogram.bucket_values[index - 1].value as f64)
-                        / histogram.count as f64
-                        * 100.0;
+                    inc_per_bucket = bucket.value - histogram.bucket_values[index - 1].value;
                 }
                 let percentage = (bucket.value as f64 / histogram.count as f64) * 100.0;
-                data.push(BucketData::new(bucket.name.clone(), bucket.value as f64, percentage, dist))
+                let inc_per_bucket_percentage = (inc_per_bucket as f64) / (histogram.count as f64)* 100.0;
+                data.push(BucketData::new(bucket.name.clone(), bucket.value, percentage, inc_per_bucket, inc_per_bucket_percentage))
             }
         }
     }

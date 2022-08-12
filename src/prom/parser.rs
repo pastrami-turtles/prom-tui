@@ -51,6 +51,7 @@ pub fn decode_single_scrape_metric(lines: Vec<String>, timestamp: u64) -> Single
                 );
             }
         }
+        // TODO handle also histogram with no additional labels
         "histogram" => {
             let splitted_lines_for_histogram = further_split_metric_lines_for_histogram(&lines);
             for group_lines in splitted_lines_for_histogram.iter() {
