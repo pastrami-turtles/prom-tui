@@ -26,9 +26,17 @@ impl MetricHistory {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum MetricType {
+    Gauge,
+    Counter,
+    Histogram,
+}
+
 pub struct SingleScrapeMetric {
     pub name: String,
     pub docstring: String,
+    pub metric_type: MetricType,
     pub value_per_labels: HashMap<String, Sample>,
 }
 
@@ -38,6 +46,7 @@ impl SingleScrapeMetric {
             details: MetricDetails {
                 name: self.name,
                 docstring: self.docstring,
+                metric_type: self.metric_type,
             },
             time_series: HashMap::new(),
         };
@@ -60,6 +69,7 @@ pub struct Metric {
 pub struct MetricDetails {
     pub name: String,
     pub docstring: String,
+    pub metric_type: MetricType,
 }
 
 impl Metric {
@@ -84,23 +94,37 @@ pub struct TimeSeries {
     pub samples: Vec<Sample>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Sample {
     GaugeSample(SingleValueSample),
     CounterSample(SingleValueSample),
-    HistogramSample(HistogramSample),
+    HistogramSample(HistogramValueSample),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SingleValueSample {
     pub timestamp: u64,
     pub value: f64,
 }
 
-#[derive(Clone)]
-pub struct HistogramSample {
-    pub timestamp: u32,
-    pub values: Vec<f64>,
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bucket {
+    pub name: String,
+    pub value: u64,
+}
+
+impl Bucket {
+    pub fn new(name: String, value: u64) -> Self {
+        Self { name, value }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct HistogramValueSample {
+    pub timestamp: u64,
+    pub bucket_values: Vec<Bucket>,
+    pub sum: f64,
+    pub count: u64,
 }
 
 fn add_time_series_into_metric(

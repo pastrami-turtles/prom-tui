@@ -2,7 +2,7 @@ use super::{
     model::MetricHistory,
     parser::{decode_single_scrape_metric, split_metric_lines},
 };
-use std::{sync::{Arc, RwLock, RwLockReadGuard}, error::Error};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::{task, time::sleep};
@@ -63,12 +63,10 @@ async fn scrape_metric_endpoint(
                 Ok(splitted_metrics) => {
                     update_history_with_new_scrape(history, splitted_metrics);
                     update_error_status(error_msg, None);
-                },
+                }
                 Err(err) => {
                     update_error_status(error_msg, Some(err.to_string()));
-                    log::error!(
-                        "Not able to scrape the metrics endpoint: {}", err
-                    );
+                    log::error!("Not able to scrape the metrics endpoint: {}", err);
                 }
             }
             // set must_scrape to false to avoid scraping again until the next tick
